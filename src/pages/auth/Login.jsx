@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,9 +44,6 @@ export default function Login() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-muted-foreground">
-        New here? <Link to="/register" className="font-bold text-primary hover:underline">Create an account</Link>
-      </p>
     </AuthLayout>
   )
 }
