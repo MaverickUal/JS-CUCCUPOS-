@@ -100,7 +100,7 @@ export default function AdminOrders() {
                 <TableRow key={o.id}>
                   <TableCell className="font-semibold">{orderNo(o)}</TableCell>
                   <TableCell>{o.customerName}</TableCell>
-                  <TableCell className="max-w-[14rem] truncate text-muted-foreground">{Object.values(o.items).map((i) => `${i.qty}× ${i.name}`).join(", ")}</TableCell>
+                  <TableCell className="max-w-[14rem] truncate text-muted-foreground">{Object.values(o.items).map((i) => `${i.qty}× ${i.name} (${peso(i.price)})`).join(", ")}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(o.createdAt)}</TableCell>
                   <TableCell>{o.paymentMethod}</TableCell>
                   <TableCell className="text-right font-semibold">{peso(o.total)}</TableCell>

@@ -73,9 +73,6 @@ export default function HistoryPage() {
               <Button size="sm" variant="outline" onClick={() => setReceiptFor(o)}>
                 <ReceiptIcon /> Receipt
               </Button>
-              <Button size="sm" variant="outline" onClick={() => { reorder(o); toast.success("Items added to your order"); navigate("/order") }}>
-                <RotateCcw /> Order again
-              </Button>
             </div>
           </div>
         </Card>

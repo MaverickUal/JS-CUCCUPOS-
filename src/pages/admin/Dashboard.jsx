@@ -171,7 +171,7 @@ export default function Dashboard() {
                       return point ? formatDateTime(point.from.toISOString()) : ""
                     }}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke={OLIVE} strokeWidth={2.5} fill="url(#rev)" />
+                  <Area type="linear" dataKey="revenue" stroke={OLIVE} strokeWidth={2.5} fill="url(#rev)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

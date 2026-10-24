@@ -223,9 +223,27 @@ Function because creating another user's sign-in needs the Admin SDK. Promoting
 someone to `admin` has to be done by hand in the Firebase console — the rules
 deliberately prevent the app from granting it.
 
----
+## Fix log (batch 1 — 6, 9, 10, 11)
+- 6 Category: unified `CATEGORIES` export in `types.js`; used in Menu + Order filters.
+- 9 Cart counter: `cartQtyMap` + `Badge` on menu cards (`Order.jsx`).
+- 10 Stray `₱0`: receipt filters qty > 0; `cashTendered`/`changeGiven` guarded > 0; `receipt.css` unchanged.
+- 11 Chart: `Area type="linear"` in Dashboard.
 
-## Deploying
+## Fix log (batch 2 — 1, 2, 5, 8)
+- 1 Auth: removed `/register` route file (`src/pages/auth/Register.jsx`); `App.jsx` had no route.
+- 2 Reorder: removed "Order again" button from `History.jsx`; `AppStore` reorder keeps current menu price/availability checks.
+- 5 Orders: added historical price to item list in `Orders.jsx` (`peso(i.price)`).
+- 8 Customizations: added quick tap buttons (prep + add-ons) above note input in checkout dialog (`Order.jsx`).
+- 6 Category: unified `CATEGORIES` export in `types.js`; used in Menu + Order filters.
+- 9 Cart counter: `cartQtyMap` + `Badge` on menu cards (`Order.jsx`).
+- 10 Stray `₱0`: receipt filters qty > 0; `cashTendered`/`changeGiven` guarded > 0; `receipt.css` unchanged.
+- 11 Chart: `Area type="linear"` in Dashboard.
+
+## Test instructions
+- Open `/order`, filter by category, verify no mismatch; add items, verify badge appears.
+- Open receipt dialog / print; check no `₱0` on empty/change lines.
+- Open `/admin` dashboard; verify 7-day line is straight, not curved over zero days.
+- No commits or pushes made.
 
 Static build — any static host works (Firebase Hosting, Vercel, Netlify).
 
