@@ -16,7 +16,7 @@ export function discountLabel(type) {
 }
 
 export function buildReceipt(order) {
-  const items = Object.values(order.items ?? {}).filter(Boolean)
+  const items = Object.values(order.items ?? {}).filter(Boolean).filter((i) => Number(i.qty ?? 0) > 0)
   const lines = items.map((i) => ({
     name: i.name,
     qty: Number(i.qty ?? 0),

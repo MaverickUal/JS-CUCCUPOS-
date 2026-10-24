@@ -102,8 +102,8 @@ export function ReceiptDialog({
       if (r.discountAmount > 0) line(r.discountLabel, `-${peso(r.discountAmount)}`)
       line("TOTAL", peso(r.total), { bold: true })
       line("Payment", r.paymentMethod)
-      if (typeof r.cashTendered === "number") line("Cash tendered", peso(r.cashTendered))
-      if (typeof r.changeGiven === "number") line("Change given", peso(r.changeGiven))
+      if (typeof r.cashTendered === "number" && r.cashTendered > 0) line("Cash tendered", peso(r.cashTendered))
+      if (typeof r.changeGiven === "number" && r.changeGiven > 0) line("Change given", peso(r.changeGiven))
 
       if (r.refunds.length > 0) {
         y += 3

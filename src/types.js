@@ -111,4 +111,9 @@
  * @property {number} qty
  */
 
+/**
+ * Shared category list used across the app.
+ */
+export const CATEGORIES = ["Coffee", "Milk Tea", "Frappe", "Others"]
+
 export {}

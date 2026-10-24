@@ -15,7 +15,8 @@ import { useStore } from "@/store/AppStore"
 import { orderNo, peso } from "@/lib/format"
 import { changeFor } from "@/lib/discounts"
 import { cn } from "@/lib/utils"
-const FILTERS = ["All", "Coffee", "Milk Tea", "Frappe", "Others"]
+import { CATEGORIES } from "@/types"
+const FILTERS = ["All", ...CATEGORIES]
 
 /** Common peso notes/coins, plus an "exact" shortcut, to save the cashier typing. */
 const QUICK_TENDER = [20, 50, 100, 200, 500, 1000]
@@ -255,6 +256,14 @@ function CheckoutDialog({
               </p>
             </div>
             <CashTendered tender={tender} onChange={onTenderChange} total={breakdown.total} idPrefix="dialog" />
+            <div className="flex flex-wrap gap-2">
+              {["Less Ice", "No Sugar", "50% Sugar"].map((opt) => (
+                <Button key={opt} type="button" variant="outline" size="sm" onClick={() => setNote((prev) => (prev ? prev + "; " + opt : opt))}>{opt}</Button>
+              ))}
+              {["Extra Shot (+₱20)", "Pearls (+₱15)"].map((opt) => (
+                <Button key={opt} type="button" variant="outline" size="sm" onClick={() => setNote((prev) => (prev ? prev + "; " + opt : opt))}>{opt}</Button>
+              ))}
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="note">Note for the kitchen (optional)</Label>
               <Input id="note" placeholder="Less ice, no sugar…" maxLength={120} value={note} onChange={(e) => setNote(e.target.value)} disabled={phase === "processing"} />
@@ -280,6 +289,13 @@ export default function OrderPage() {
   const [discountType, setDiscountType] = useState("none")
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+
+  const cartLines = useStore().cartLines
+  const cartQtyMap = useMemo(() => {
+    const m = {}
+    cartLines.forEach((l) => { m[l.menuItemId] = (m[l.menuItemId] ?? 0) + l.qty })
+    return m
+  }, [cartLines])
 
   const items = useMemo(
     () => menu.filter((m) => (category === "All" || m.category === category) && m.name.toLowerCase().includes(search.trim().toLowerCase())),
@@ -334,6 +350,7 @@ export default function OrderPage() {
                   <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
                   <div className="mt-auto flex items-center justify-between pt-2">
                     {item.available ? <Badge variant="tag">{item.tag ?? item.category}</Badge> : <Badge variant="destructive">Sold out</Badge>}
+                    {cartQtyMap[item.id] ? <Badge variant="primary" className="ml-2">{cartQtyMap[item.id]} in cart</Badge> : null}
                     <Button size="icon" variant="secondary" className="size-8 rounded-lg" disabled={!item.available} onClick={() => addToCart(item.id)} aria-label={`Add ${item.name} to order`}>
                       <Plus />
                     </Button>
