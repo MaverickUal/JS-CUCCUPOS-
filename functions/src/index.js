@@ -285,14 +285,14 @@ export const setCashierEnabled = onCall(async (request) => {
   const next = enabled === true
 
   try {
-    await auth.setCustomUserClaims(targetUid, { disabled: next })
+    await auth.setCustomUserClaims(targetUid, { disabled: !next })
   } catch (err) {
     logger.error("auth disable failed", err)
     throw new HttpsError("internal", "Could not update the sign-in account.")
   }
 
   await targetRef.update({
-    disabled: next,
+    disabled: !next,
     // Credentials are kept so the account can be re-enabled; an owner/manager can
     // reset them out of band if needed.
     reenabledAt: next ? new Date().toISOString() : null,
