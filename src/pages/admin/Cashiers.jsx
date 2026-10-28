@@ -52,7 +52,7 @@ export default function AdminCashiers() {
   }, [users, orders, search])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 px-3 sm:px-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {rows.filter((r) => r.role === "cashier" && !r.disabled).length} active cashiers ·{" "}

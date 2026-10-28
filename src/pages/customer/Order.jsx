@@ -315,7 +315,7 @@ export default function OrderPage() {
   const cartLinesCount = cartCount
 
   return (
-    <div className="flex items-start gap-6">
+    <div className="flex items-start gap-6 px-3 sm:px-0">
       <div className="min-w-0 flex-1 space-y-5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative w-full sm:w-72">

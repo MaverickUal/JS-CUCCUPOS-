@@ -22,7 +22,7 @@ VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_MEASUREMENT_ID=
 VITE_FIREBASE_DATABASE_URL=
 ```
-Security rules, the data structure, and the seeding steps live in [`src/lib/firebase_structure.md`](src/lib/firebase_structure.md).
+Security rules, the data structure, and the seeding steps live in [`docs/firebase_structure.md`](docs/firebase_structure.md).
 
 ## Deploying the backend
 

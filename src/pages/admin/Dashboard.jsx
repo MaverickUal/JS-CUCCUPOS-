@@ -113,7 +113,7 @@ export default function Dashboard() {
   const empty = !filtered && series.every((p) => p.orders === 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-3 sm:px-0">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <RangePicker value={sel} onChange={setSel} />
         <div className="w-56 space-y-1.5">
