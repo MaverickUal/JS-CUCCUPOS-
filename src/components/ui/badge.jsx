@@ -14,6 +14,7 @@ const badgeVariants = cva(
         warning: "bg-amber-100 text-amber-800",
         info: "bg-sky-100 text-sky-800",
         destructive: "bg-red-100 text-red-800",
+        void: "bg-orange-100 text-orange-800 ring-1 ring-orange-300",
       },
     },
     defaultVariants: { variant: "default" },

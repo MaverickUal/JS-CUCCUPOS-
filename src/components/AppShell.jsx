@@ -23,7 +23,7 @@ function NotificationBell({ variant }) {
   const navigate = useNavigate()
   const items =
     variant === "admin"
-      ? orders.filter((o) => o.status === "pending")
+      ? orders.filter((o) => o.status === "pending" || o.status === "pending_void")
       : orders.filter((o) => o.customerId === currentUser?.id && o.status === "ready")
 
   return (
@@ -35,12 +35,12 @@ function NotificationBell({ variant }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuLabel>{variant === "admin" ? "New orders" : "Ready for pickup"}</DropdownMenuLabel>
+        <DropdownMenuLabel>{variant === "admin" ? "New orders and void requests" : "Ready for pickup"}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">You're all caught up.</p>}
         {items.slice(0, 5).map((o) => (
           <DropdownMenuItem key={o.id} onSelect={() => navigate(variant === "admin" ? "/admin/orders" : "/history")} className="flex-col items-start gap-0">
-            <span className="font-semibold">{variant === "admin" ? `${orderNo(o)} from ${o.customerName}` : `${orderNo(o)} is ready`}</span>
+            <span className="font-semibold">{variant === "admin" ? (o.status === "pending_void" ? `${orderNo(o)} · void requested by ${o.customerName}` : `${orderNo(o)} from ${o.customerName}`) : `${orderNo(o)} is ready`}</span>
             <span className="text-xs text-muted-foreground">{peso(o.total)} · {Object.values(o.items).reduce((s, i) => s + i.qty, 0)} items</span>
           </DropdownMenuItem>
         ))}

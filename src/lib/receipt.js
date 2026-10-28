@@ -48,7 +48,7 @@ export function buildReceipt(order) {
     dateTimeText: formatDateTime(order.createdAt),
     createdAt: order.createdAt,
     cashierName: order.customerName || "Unknown",
-    status: order.status,
+    status: order.status === "pending_void" ? "Pending Void" : order.status,
     lines,
     subtotal,
     discountLabel: discountLabel(order.discountType),

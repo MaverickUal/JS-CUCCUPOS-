@@ -75,6 +75,36 @@ export async function requestRefund(
   }
 }
 
+/** Cashier asks to void one of their own orders. The backend moves it to `pending_void`. */
+export async function requestVoid(orderId, reason) {
+  try {
+    const res = await httpsCallable(functions(), "requestVoid")({ orderId, reason })
+    return { ok: true, data: res.data }
+  } catch (err) {
+    return { ok: false, error: describeFunctionError(err) }
+  }
+}
+
+/** Owner/Manager approves a pending request. The order becomes `cancelled`. */
+export async function approveVoid(customerId, orderId, requestId) {
+  try {
+    const res = await httpsCallable(functions(), "approveVoid")({ customerId, orderId, requestId })
+    return { ok: true, data: res.data }
+  } catch (err) {
+    return { ok: false, error: describeFunctionError(err) }
+  }
+}
+
+/** Owner/Manager declines a pending request with a reason. The order returns to its previous status. */
+export async function declineVoid(customerId, orderId, requestId, reason) {
+  try {
+    const res = await httpsCallable(functions(), "declineVoid")({ customerId, orderId, requestId, reason })
+    return { ok: true, data: res.data }
+  } catch (err) {
+    return { ok: false, error: describeFunctionError(err) }
+  }
+}
+
 export async function createCashier(input) {
   try {
     const call = httpsCallable(functions(), "createCashier")

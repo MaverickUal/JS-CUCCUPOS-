@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Search, Undo2, Receipt } from "lucide-react"
+import { Search, Undo2, Receipt, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -9,6 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/StatusBadge"
 import { RefundDialog } from "@/components/RefundDialog"
 import { ReceiptDialog } from "@/components/ReceiptDialog"
+import { VoidDecisionDialog } from "@/components/VoidDecisionDialog"
+import { VoidAudit, VoidRequestInfo } from "@/components/VoidAudit"
+import { isPendingVoid } from "@/lib/voids"
 import { useStore } from "@/store/AppStore"
 import { formatDateTime, orderNo, peso } from "@/lib/format"
 import { remainingRefundable } from "@/lib/finance"
@@ -21,8 +24,9 @@ const NEXT = {
 /** Rows rendered before the table stops. Older orders remain searchable. */
 const CAP = 100
 
-const FILTERS = ["all", "pending", "preparing", "ready", "completed", "cancelled"]
-const label = (f) => (f === "all" ? "All" : f[0].toUpperCase() + f.slice(1))
+const FILTERS = ["all", "pending", "pending_void", "preparing", "ready", "completed", "cancelled"]
+const label = (f) =>
+  f === "all" ? "All" : f === "pending_void" ? "Pending Void" : f[0].toUpperCase() + f.slice(1)
 
 export default function AdminOrders() {
   const { orders, updateOrderStatus } = useStore()
@@ -32,6 +36,8 @@ export default function AdminOrders() {
   const [refundOpen, setRefundOpen] = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [visible, setVisible] = useState(CAP)
+  // { id, mode: "approve" | "decline" } while a decision dialog is open.
+  const [decision, setDecision] = useState(null)
 
   const counts = useMemo(() => {
     const c = { all: orders.length }
@@ -55,6 +61,7 @@ export default function AdminOrders() {
   }, [filter, search])
 
   const selected = orders.find((o) => o.id === selectedId) ?? null
+  const deciding = decision ? orders.find((o) => o.id === decision.id) ?? null : null
 
   async function advance(id, status, name) {
     await updateOrderStatus(id, status)
@@ -84,7 +91,40 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      {filter === "pending_void" && (
+        <div className="space-y-3" aria-label="Pending void requests">
+          {rows.length === 0 && (
+            <Card className="py-12 text-center text-muted-foreground">No void requests are waiting for a decision.</Card>
+          )}
+          {rows.slice(0, visible).map((o) => (
+            <Card key={o.id} className="space-y-3 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-lg font-bold">{orderNo(o)}</p>
+                  <p className="text-xs text-muted-foreground">{o.customerName} · {formatDateTime(o.createdAt)}</p>
+                </div>
+                <div className="text-right">
+                  <StatusBadge status={o.status} />
+                  <p className="mt-1 text-lg font-bold tabular-nums">{peso(o.total)}</p>
+                </div>
+              </div>
+              <ul className="space-y-0.5 text-sm">
+                {Object.values(o.items).map((i) => (
+                  <li key={i.menuItemId} className="flex justify-between"><span>{i.qty} × {i.name}</span><span>{peso(i.qty * i.price)}</span></li>
+                ))}
+              </ul>
+              <VoidRequestInfo request={o.voidRequest} />
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setSelectedId(o.id)}>Details</Button>
+                <Button size="sm" variant="outline" onClick={() => setDecision({ id: o.id, mode: "decline" })}><X /> Decline Void</Button>
+                <Button size="sm" variant="destructive" onClick={() => setDecision({ id: o.id, mode: "approve" })}><Check /> Approve Void</Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {filter !== "pending_void" && <Card className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -114,7 +154,7 @@ export default function AdminOrders() {
             })}
           </TableBody>
         </Table>
-      </Card>
+      </Card>}
 
       {/*
         Honest about the cap: sorting makes the newest-first rows the ones shown,
@@ -155,6 +195,8 @@ export default function AdminOrders() {
               )}
               {selected.note && <p className="text-sm"><b>Note:</b> {selected.note}</p>}
 
+              {selected.voidRequest && <VoidAudit order={selected} />}
+
               {Object.values(selected.refunds ?? {}).length > 0 && (
                 <div className="space-y-1.5 rounded-lg border border-destructive/30 p-2.5 text-sm">
                   <p className="font-semibold text-destructive">Refunds</p>
@@ -180,7 +222,13 @@ export default function AdminOrders() {
                 <Button variant="outline" onClick={() => setReceiptOpen(true)}>
                   <Receipt /> Receipt
                 </Button>
-                {selected.status !== "cancelled" && remainingRefundable(selected) > 0.004 && (
+                {isPendingVoid(selected) && (
+                  <>
+                    <Button variant="outline" onClick={() => setDecision({ id: selected.id, mode: "decline" })}><X /> Decline Void</Button>
+                    <Button variant="destructive" onClick={() => setDecision({ id: selected.id, mode: "approve" })}><Check /> Approve Void</Button>
+                  </>
+                )}
+                {selected.status !== "cancelled" && selected.status !== "pending_void" && remainingRefundable(selected) > 0.004 && (
                   <Button variant="outline" onClick={() => setRefundOpen(true)}>
                     <Undo2 /> Refund
                   </Button>
@@ -197,6 +245,7 @@ export default function AdminOrders() {
         </DialogContent>
       </Dialog>
 
+      <VoidDecisionDialog order={deciding} mode={decision?.mode} open={!!deciding && isPendingVoid(deciding)} onOpenChange={(v) => !v && setDecision(null)} />
       <RefundDialog order={selected} open={refundOpen} onOpenChange={setRefundOpen} />
       <ReceiptDialog order={selected} open={receiptOpen} onOpenChange={setReceiptOpen} />
     </div>

@@ -20,7 +20,30 @@
 
 /** @typedef {"Coffee" | "Milk Tea" | "Frappe" | "Others"} Category */
 
-/** @typedef {"pending" | "preparing" | "ready" | "completed" | "cancelled"} OrderStatus */
+/**
+ * `pending_void` is set only by the requestVoid Cloud Function and cleared only by
+ * approveVoid (-> cancelled) or declineVoid (-> the status recorded before the request).
+ * @typedef {"pending" | "preparing" | "ready" | "completed" | "cancelled" | "pending_void"} OrderStatus
+ */
+
+/** Approval state of a void request. Separate from the order's own status. */
+/** @typedef {"pending" | "approved" | "declined"} VoidRequestStatus */
+
+/**
+ * @typedef {Object} VoidRequest
+ * @property {string} requestId
+ * @property {VoidRequestStatus} status
+ * @property {string} reason Cashier's reason for the request.
+ * @property {string} requestedBy Cashier uid.
+ * @property {string} requestedByName
+ * @property {string} requestedAt ISO timestamp.
+ * @property {OrderStatus} previousOrderStatus Status restored if the request is declined.
+ * @property {"approved" | "declined"} [decision] Absent while pending.
+ * @property {string} [decisionReason] Required when declined.
+ * @property {string} [decidedBy] Admin uid, set by the backend.
+ * @property {string} [decidedByName]
+ * @property {string} [decidedAt]
+ */
 
 /**
  * The shop is cash-only for now. Widen this union (and the matching zod schema in
@@ -80,6 +103,9 @@
  *   Absent until a refund is recorded — the order itself is never deleted.
  * @property {number} [refundedTotal] Running sum of completed refunds. Cached for cheap reads;
  *   recomputed by the backend.
+ * @property {VoidRequest} [voidRequest] Latest void request. Absent on orders never submitted for voiding.
+ * @property {Record<string, VoidRequest>} [voidHistory] Earlier (declined) requests, keyed by requestId.
+ *   Append-only; written by the backend when a new request replaces a decided one.
  */
 
 /**

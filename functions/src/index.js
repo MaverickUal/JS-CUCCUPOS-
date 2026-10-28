@@ -10,6 +10,9 @@
  *  - Creating another user's Authentication account. That requires the Admin SDK.
  *  - Deleting/deactivating an Authentication account. Also Admin SDK, and it does
  *    not cascade to RTDB.
+ *  - Void requests and decisions. The database rules refuse every client write to
+ *    `voidRequest`, `voidHistory` and the `pending_void` status, so the approval
+ *    trail can only be written here, from the verified session.
  *
  * Every function re-checks the caller's role from the database rather than trusting
  * the ID token alone, so a stale token cannot grant access after a role change.
@@ -19,6 +22,7 @@ import { getAuth } from "firebase-admin/auth"
 import { getDatabase } from "firebase-admin/database"
 import { HttpsError, onCall } from "firebase-functions/v2/https"
 import { logger } from "firebase-functions"
+import { applyVoidDecision, applyVoidRequest, runTransition } from "./voids.js"
 
 initializeApp()
 
@@ -34,6 +38,22 @@ async function requireAdmin(uid) {
   }
   if (profile.role !== "admin") {
     throw new HttpsError("permission-denied", "Only an Owner/Manager can perform this action.")
+  }
+  if (profile.disabled === true) {
+    throw new HttpsError("permission-denied", "This account is disabled.")
+  }
+  return { uid, name: String(profile.name ?? "") }
+}
+
+/** Rejects the call unless the caller is currently an active cashier in the database. */
+async function requireCashier(uid) {
+  const snap = await db.ref(`users/${uid}`).get()
+  const profile = snap.val()
+  if (!profile) {
+    throw new HttpsError("unauthenticated", "No user profile found for this session.")
+  }
+  if (profile.role !== "cashier") {
+    throw new HttpsError("permission-denied", "Only a cashier can request a void.")
   }
   if (profile.disabled === true) {
     throw new HttpsError("permission-denied", "This account is disabled.")
@@ -281,3 +301,73 @@ export const setCashierEnabled = onCall(async (request) => {
   logger.info("cashier toggled", { targetUid, enabled: next, by: uid })
   return { ok: true, targetUid, enabled: next }
 })
+
+const runVoidTransaction = (orderRef, transition) =>
+  runTransition(orderRef, transition, (code, message) => new HttpsError(code, message))
+
+const requireId = (value, label) => {
+  if (typeof value !== "string" || !value.trim() || /[.#$\/\[\]]/.test(value)) {
+    throw new HttpsError("invalid-argument", `${label} is required.`)
+  }
+  return value.trim()
+}
+
+/**
+ * Cashier asks to void one of their own orders.
+ *
+ * The order path is built from the caller's uid, never from client input, so a
+ * cashier cannot reach another cashier's order. The order moves to
+ * `pending_void`; it is not cancelled and nothing is deleted.
+ */
+export const requestVoid = onCall(async (request) => {
+  const uid = request.auth?.uid
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in to continue.")
+  const cashier = await requireCashier(uid)
+
+  const orderId = requireId(request.data?.orderId, "orderId")
+  const reason = request.data?.reason
+
+  const orderRef = db.ref(`orders/${uid}/${orderId}`)
+  const requestId = orderRef.child("voidHistory").push().key
+  const now = new Date().toISOString()
+
+  const order = await runVoidTransaction(orderRef, (current) => {
+    if (current.customerId !== uid) {
+      return { error: { code: "permission-denied", message: "You can only void your own orders." } }
+    }
+    return applyVoidRequest(current, { requestId, reason, cashier, now })
+  })
+
+  logger.info("void requested", { orderId, requestId, by: uid })
+  return { ok: true, orderId, requestId, status: order.status }
+})
+
+async function decideVoid(request, decision) {
+  const uid = request.auth?.uid
+  if (!uid) throw new HttpsError("unauthenticated", "Sign in to continue.")
+  const admin = await requireAdmin(uid)
+
+  const customerId = requireId(request.data?.customerId, "customerId")
+  const orderId = requireId(request.data?.orderId, "orderId")
+  const requestId = requireId(request.data?.requestId, "requestId")
+
+  const orderRef = db.ref(`orders/${customerId}/${orderId}`)
+  const order = await runVoidTransaction(orderRef, (current) =>
+    applyVoidDecision(current, {
+      requestId,
+      decision,
+      reason: request.data?.reason,
+      admin,
+      now: new Date().toISOString(),
+    })
+  )
+
+  logger.info("void decided", { orderId, requestId, decision, by: uid })
+  return { ok: true, orderId, requestId, decision, status: order.status }
+}
+
+/** Owner/Manager approves: the order becomes `cancelled` and the decision is recorded. */
+export const approveVoid = onCall((request) => decideVoid(request, "approved"))
+
+/** Owner/Manager declines: the order returns to the status it had before the request. */
+export const declineVoid = onCall((request) => decideVoid(request, "declined"))

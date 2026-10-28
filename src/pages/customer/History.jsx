@@ -1,11 +1,13 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { History as HistoryIcon, Receipt as ReceiptIcon, RotateCcw } from "lucide-react"
-import { toast } from "sonner"
+import { Ban, History as HistoryIcon, Receipt as ReceiptIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { StatusBadge } from "@/components/StatusBadge"
 import { ReceiptDialog } from "@/components/ReceiptDialog"
+import { VoidRequestDialog } from "@/components/VoidRequestDialog"
+import { VoidAudit } from "@/components/VoidAudit"
+import { canRequestVoid } from "@/lib/voids"
 import { useStore } from "@/store/AppStore"
 import { formatDateTime, orderNo, peso } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -36,8 +38,12 @@ export default function HistoryPage() {
   // customer-identifying field is ever printed.
   const navigate = useNavigate()
   const [receiptFor, setReceiptFor] = useState(null)
+  const [voidForId, setVoidForId] = useState(null)
   // The store already hands us newest-first; filtering preserves that order.
   const mine = orders.filter((o) => o.customerId === currentUser?.id)
+
+  // Looked up by id so the dialog follows live updates instead of a stale copy.
+  const voidFor = mine.find((o) => o.id === voidForId) ?? null
 
   if (mine.length === 0)
     return (
@@ -66,10 +72,18 @@ export default function HistoryPage() {
             ))}
           </ul>
           {o.note && <p className="mt-2 text-xs italic text-muted-foreground">Note: {o.note}</p>}
-          {o.status !== "cancelled" && <Progress status={o.status} />}
+          {o.status !== "cancelled" && (
+            <Progress status={o.status === "pending_void" ? o.voidRequest?.previousOrderStatus : o.status} />
+          )}
+          {o.voidRequest && <div className="mt-3"><VoidAudit order={o} /></div>}
           <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
             <p className="font-bold">Total {peso(o.total)}</p>
             <div className="flex gap-2">
+              {canRequestVoid(o) && (
+                <Button size="sm" variant="outline" onClick={() => setVoidForId(o.id)}>
+                  <Ban /> Request Void
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={() => setReceiptFor(o)}>
                 <ReceiptIcon /> Receipt
               </Button>
@@ -77,6 +91,7 @@ export default function HistoryPage() {
           </div>
         </Card>
       ))}
+      <VoidRequestDialog order={voidFor} open={!!voidFor} onOpenChange={(v) => !v && setVoidForId(null)} />
       <ReceiptDialog order={receiptFor} open={!!receiptFor} onOpenChange={(v) => !v && setReceiptFor(null)} />
     </div>
   )

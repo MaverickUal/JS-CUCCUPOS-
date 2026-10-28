@@ -14,6 +14,7 @@ This document describes the Firebase Realtime Database (RTDB) data model and sec
 | **Menu is publicly readable** | Customers browse the menu before logging in. Only admins can modify it. |
 | **Order items stored as a map** | RTDB handles objects better than arrays. Each item is keyed by `menuItemId` for O(1) lookup. |
 | **No cascading deletes** | Orders are never deleted — they are cancelled (status change) to preserve sales records. |
+| **Void requests live on the order** | `voidRequest`, `voidHistory` and the `pending_void` status are written only by Cloud Functions. See `void_workflow.md`. |
 
 ---
 

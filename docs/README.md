@@ -26,13 +26,14 @@ Security rules, the data structure, and the seeding steps live in [`docs/firebas
 
 ## Deploying the backend
 
-Three operations cannot run from the browser and live in Cloud Functions under `functions/`:
+These operations live in Cloud Functions under `functions/`:
 
 | Function | Why |
 |---|---|
 | `refundOrder` | Refund validation must be atomic, and the approving admin must come from the verified session |
 | `createCashier` | Creating another user's sign-in account needs the Admin SDK |
 | `setCashierEnabled` | Disabling an account also needs the Admin SDK, and doesn't cascade to the database |
+| `requestVoid` / `approveVoid` / `declineVoid` | The void trail must be written from the verified session; clients are blocked from writing it |
 
 ```bash
 npm run deploy:rules      # publish database.rules.json
@@ -40,7 +41,7 @@ npm run deploy:functions  # build + deploy functions/
 npm run emulators         # local Auth + RTDB + Functions
 ```
 
-**Refunds and cashier account management do not work until the functions are deployed.** The UI says so plainly instead of pretending the action succeeded.
+**Refunds and cashier account management do not work until the functions are deployed.** The same applies to the void request workflow ([`void_workflow.md`](void_workflow.md)). The UI says so plainly instead of pretending the action succeeded.
 
 Deployment uses the Firebase CLI's own login (`firebase login`) — there is no service-account key in this repository, and none is needed. The browser SDK's API key is public by design; access is controlled by `database.rules.json`.
 

@@ -8,6 +8,11 @@ import { toast } from "sonner"
 import { computeDiscount } from "@/lib/discounts"
 import { sortByCreatedAtDesc } from "@/lib/stats"
 import {
+  requestVoid as requestVoidCall,
+  approveVoid as approveVoidCall,
+  declineVoid as declineVoidCall,
+} from "@/lib/functionsClient"
+import {
   getMenuItems,
   getOrders,
   getUsers,
@@ -271,6 +276,25 @@ export function StoreProvider({ children }) {
   const refundOrder = async (orderId, amount, reason, customerId) =>
     refundOrderAction(orderId, amount, reason, customerId)
 
+  // Void workflow. These go through Cloud Functions, never the RTDB SDK: the rules
+  // refuse client writes to the void fields. Each resolves to { success, message }
+  // like the other store actions. The orders listener delivers the new state, so
+  // nothing is patched locally.
+  const toResult = (res, message) =>
+    res.ok ? { success: true, message } : { success: false, message: res.error }
+
+  const requestVoid = async (orderId, reason) =>
+    toResult(await requestVoidCall(orderId, reason), "Void request submitted.")
+
+  const approveVoid = async (order) =>
+    toResult(await approveVoidCall(order.customerId, order.id, order.voidRequest?.requestId), "Void request approved.")
+
+  const declineVoid = async (order, reason) =>
+    toResult(
+      await declineVoidCall(order.customerId, order.id, order.voidRequest?.requestId, reason),
+      "Void request declined."
+    )
+
   const setCashierEnabled = async (uid, enabled) =>
     setCashierEnabledAction(uid, enabled)
 
@@ -302,6 +326,9 @@ export function StoreProvider({ children }) {
     placeOrder,
     previewDiscount,
     refundOrder,
+    requestVoid,
+    approveVoid,
+    declineVoid,
     setCashierEnabled,
     createCashier,
     updateOrderStatus,

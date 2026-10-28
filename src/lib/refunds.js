@@ -39,6 +39,9 @@ export function applyRefund(
   if (order.status === "cancelled") {
     throw new Error("A cancelled order cannot be refunded.")
   }
+  if (order.status === "pending_void") {
+    throw new Error("Decide the pending void request before refunding this order.")
+  }
 
   const already = refundedOf(order)
   const paid = r2(Number(order.total ?? 0))
