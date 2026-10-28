@@ -63,7 +63,7 @@ export default function AdminOrders() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 px-3 sm:px-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter by status">
           {FILTERS.map((f) => (

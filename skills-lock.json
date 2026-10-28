@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "unsloppify": {
+      "source": "woerndl/unsloppify",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "2756ea3d6b4cd39048637e0be3d1397946d584dd2b9d571912dee2aa82e217d5"
+    }
+  }
+}

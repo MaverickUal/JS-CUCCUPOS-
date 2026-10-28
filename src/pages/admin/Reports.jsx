@@ -79,7 +79,7 @@ export default function Reports() {
       : `Sales · ${range.label}`
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-3 sm:px-0">
       <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <RangePicker value={sel} onChange={setSel} idPrefix="report" />
         <div className="flex gap-2">

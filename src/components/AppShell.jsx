@@ -29,7 +29,7 @@ function NotificationBell({ variant }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="relative rounded-lg p-2 text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Notifications (${items.length})`}>
+        <button className="relative min-h-[44px] min-w-[44px] rounded-lg p-2 text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Notifications (${items.length})`}>
           <Bell className="size-5 fill-current" />
           {items.length > 0 && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-red-500 ring-2 ring-background" />}
         </button>
@@ -70,7 +70,7 @@ export function AppShell({ variant }) {
               to={to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-lg font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-active/50",
+                  "flex min-h-[44px] items-center gap-3 rounded-2xl px-4 py-3 text-lg font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-active/50 active:scale-[0.99]",
                   isActive && "bg-sidebar-active shadow-lg"
                 )
               }
@@ -98,7 +98,7 @@ export function AppShell({ variant }) {
             <span className="mx-2 h-7 w-px bg-foreground/70" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-bold transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <button className="flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition-colors hover:bg-accent active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <UserCircle2 className="size-6" />
                   <span className="max-w-[9rem] truncate">{displayName}</span>
                   <ChevronDown className="size-4" />
@@ -130,7 +130,7 @@ export function AppShell({ variant }) {
             key={to}
             to={to}
             className={({ isActive }) =>
-              cn("flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold text-sidebar-foreground/80", isActive && "bg-sidebar-active text-sidebar-foreground")
+              cn("flex flex-1 flex-col items-center gap-0.5 min-h-[44px] py-2.5 text-[11px] font-semibold text-sidebar-foreground/80", isActive && "bg-sidebar-active text-sidebar-foreground")
             }
           >
             <Icon className="size-5" />
