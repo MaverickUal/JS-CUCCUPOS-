@@ -1,24 +1,3 @@
-/**
- * CuccuPOS backend functions.
- *
- * These exist because the following cannot be done safely from a browser client:
- *
- *  - Refunds. Validating the remaining refundable amount and writing an audit
- *    record must be atomic, and `approvedBy` must come from the verified session
- *    rather than anything the client sends. A client-side check is advisory only,
- *    because anyone can open devtools and call the RTDB SDK directly.
- *  - Creating another user's Authentication account. That requires the Admin SDK.
- *  - Deleting/deactivating an Authentication account. Also Admin SDK, and it does
- *    not cascade to RTDB.
-/*
- * Void requests and decisions have been removed. Orders now move to `pending_void`
- * through direct RTDB writes in src/lib/actions.js. The database rules enforce
- * the transition without cloud functions.
- */
- *
- * Every function re-checks the caller's role from the database rather than trusting
- * the ID token alone, so a stale token cannot grant access after a role change.
- */
 import { initializeApp } from "firebase-admin/app"
 import { getAuth } from "firebase-admin/auth"
 import { getDatabase } from "firebase-admin/database"

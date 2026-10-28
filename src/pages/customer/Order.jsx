@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { CheckCircle2, Loader2, Plus, Search, ShoppingBag, Trash2 } from "lucide-react"
+import { CheckCircle2, Loader2, Plus, ShoppingBag, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MenuImage } from "@/components/MenuImage"
 import { QuantityStepper } from "@/components/QuantityStepper"
 import { DiscountPicker } from "@/components/DiscountPicker"
 import { useStore } from "@/store/AppStore"
 import { orderNo, peso } from "@/lib/format"
 import { changeFor } from "@/lib/discounts"
 import { cn } from "@/lib/utils"
+import { applyMenuFilters, useMenuFilters } from "@/lib/useMenuFilters"
 import { CATEGORIES } from "@/types"
 const FILTERS = ["All", ...CATEGORIES]
 
@@ -67,28 +66,43 @@ function MoneySummary({
   sufficient,
 }) {
   return (
-    <div className="space-y-1 text-sm">
-      <div className="flex justify-between">
+    <div className="space-y-2 text-sm">
+      <div className="flex justify-between text-muted-foreground">
         <span>Subtotal</span>
-        <span className="tabular-nums">{peso(breakdown.subtotal)}</span>
+        <span className="font-semibold tabular-nums text-foreground">{peso(breakdown.subtotal)}</span>
       </div>
       {breakdown.amount > 0 && (
-        <div className="flex justify-between font-semibold text-emerald-700">
+        <div className="flex justify-between text-muted-foreground">
           <span>Discount</span>
-          <span className="tabular-nums">−{peso(breakdown.amount)}</span>
+          <span className="font-semibold tabular-nums text-foreground">−{peso(breakdown.amount)}</span>
         </div>
       )}
-      <div className="flex justify-between border-t pt-1 text-base font-bold">
-        <span>Total</span>
-        <span className="tabular-nums">{peso(breakdown.total)}</span>
+      <div className="flex items-baseline justify-between border-t pt-3">
+        <span className="text-lg font-bold">Total</span>
+        <span className="text-2xl font-bold tabular-nums">{peso(breakdown.total)}</span>
       </div>
-      <div className="flex justify-between text-lg font-bold">
+      <div className="flex justify-between font-bold">
         <span>Change</span>
         <span className={cn("tabular-nums", !sufficient && "text-destructive")}>
           {sufficient ? peso(change) : `Short by ${peso(Math.abs(change))}`}
         </span>
       </div>
     </div>
+  )
+}
+
+/** Inline illustration for the empty order: a steaming cup on a saucer. */
+function EmptyOrderArt() {
+  return (
+    <svg viewBox="0 0 120 120" className="size-28" role="img" aria-label="Empty cup" fill="none">
+      <ellipse cx="60" cy="102" rx="38" ry="7" className="fill-secondary" />
+      <path d="M32 54h52v18a26 26 0 0 1-26 26h0a26 26 0 0 1-26-26V54Z" className="fill-card stroke-primary" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M84 60h6a9 9 0 0 1 0 18h-8" className="stroke-primary" strokeWidth="4" strokeLinecap="round" />
+      <path d="M32 62h52" className="stroke-primary/40" strokeWidth="3" />
+      <path d="M46 40c-4-5 4-8 0-14M60 40c-4-5 4-8 0-14M74 40c-4-5 4-8 0-14" className="stroke-primary/60" strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx="96" cy="30" r="3" className="fill-primary/30" />
+      <circle cx="22" cy="40" r="2.5" className="fill-primary/30" />
+    </svg>
   )
 }
 
@@ -110,30 +124,27 @@ function CartPanel({
   }, [tenderRaw, breakdown.total])
   const canCheckout = cartLines.length > 0 && tender.sufficient
   return (
-    <Card className="flex max-h-[calc(100vh-11rem)] flex-col p-5 shadow-md">
-      <h2 className="text-xl font-bold">Current Order</h2>
-      <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
+    <div className="flex h-full flex-col overflow-y-auto bg-card p-5">
+      <h2 className="text-2xl font-bold">Current Order</h2>
+      <div className="mt-4 min-h-[8rem] flex-1 space-y-1 overflow-y-auto pr-1">
         {cartLines.length === 0 && (
-          <div className="grid place-items-center gap-2 rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
-            <ShoppingBag className="size-6" />
-            Your order is empty. Tap + on a drink to add it.
+          <div className="grid place-items-center gap-1 px-4 py-10 text-center">
+            <EmptyOrderArt />
+            <p className="mt-2 text-lg font-bold">No items yet</p>
+            <p className="max-w-[16rem] text-sm text-muted-foreground">Tap the + on any drink to start a new order.</p>
           </div>
         )}
         {cartLines.map(({ item, qty }) => (
-          <div key={item.id} className="flex gap-3 rounded-xl border p-2.5 shadow-sm">
-            <MenuImage src={item.image} alt={item.name} className="size-16 shrink-0 rounded-lg" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <p className="truncate text-sm font-bold">{item.name}</p>
-                <button onClick={() => removeFromCart(item.id)} aria-label={`Remove ${item.name}`} className="text-muted-foreground transition-colors hover:text-destructive">
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-              <p className="text-sm font-bold">{peso(item.price * qty)}</p>
-              <div className="mt-1.5 flex items-center justify-between">
-                <QuantityStepper value={qty} onChange={(n) => setQty(item.id, n)} />
-                <Badge variant="tag">{item.tag ?? item.category}</Badge>
-              </div>
+          <div key={item.id} className="border-b py-3 last:border-b-0">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 truncate font-bold">{item.name}</p>
+              <p className="shrink-0 font-bold tabular-nums text-primary">{peso(item.price * qty)}</p>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <QuantityStepper value={qty} onChange={(n) => setQty(item.id, n)} />
+              <button onClick={() => removeFromCart(item.id)} aria-label={`Remove ${item.name}`} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-destructive">
+                <Trash2 className="size-4" />
+              </button>
             </div>
           </div>
         ))}
@@ -153,14 +164,14 @@ function CartPanel({
         {cartLines.length > 0 && (
           <CashTendered tender={tender} onChange={onTenderChange} total={breakdown.total} idPrefix="panel" />
         )}
-        <Button className="w-full" size="lg" disabled={!canCheckout} onClick={onCheckout}>
-          Checkout
+        <Button className="h-14 w-full rounded-2xl text-base shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]" size="lg" disabled={!canCheckout} onClick={onCheckout}>
+          <ShoppingBag className="!size-5" /> Checkout
         </Button>
         {cartLines.length > 0 && !tender.sufficient && (
           <p className="text-center text-xs text-muted-foreground">Enter the cash received to continue.</p>
         )}
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -283,7 +294,7 @@ function CheckoutDialog({
 
 export default function OrderPage() {
   const { menu, addToCart, cartCount } = useStore()
-  const [search, setSearch] = useState("")
+  const filters = useMenuFilters()
   const [category, setCategory] = useState("All")
   const [tenderRaw, setTenderRaw] = useState("")
   const [discountType, setDiscountType] = useState("none")
@@ -297,10 +308,13 @@ export default function OrderPage() {
     return m
   }, [cartLines])
 
-  const items = useMemo(
-    () => menu.filter((m) => (category === "All" || m.category === category) && m.name.toLowerCase().includes(search.trim().toLowerCase())),
-    [menu, search, category]
-  )
+  const items = useMemo(() => {
+    const term = filters.q.trim().toLowerCase()
+    const matched = menu.filter(
+      (m) => (category === "All" || m.category === category) && m.name.toLowerCase().includes(term)
+    )
+    return applyMenuFilters(matched, filters)
+  }, [menu, filters.q, filters.avail, filters.sort, category])
 
   // Reset the tender and discount whenever the cart empties — the store clears the
   // cart after a successful order, so this wipes stale values between sales.
@@ -312,52 +326,66 @@ export default function OrderPage() {
     }
   }, [cartCount])
 
-  const cartLinesCount = cartCount
-
   return (
-    <div className="flex items-start gap-6 px-3 sm:px-0">
-      <div className="min-w-0 flex-1 space-y-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-full sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input aria-label="Search menu items" className="pl-9" placeholder="Search menu items…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Menu categories">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                role="tab"
-                aria-selected={category === f}
-                onClick={() => setCategory(f)}
-                className={cn("rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors", category === f ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-accent")}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+    <div className="flex h-full">
+      <div className="min-w-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 lg:px-6">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Menu categories">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              role="tab"
+              aria-selected={category === f}
+              onClick={() => setCategory(f)}
+              className={cn(
+                "rounded-full px-6 py-2 text-sm font-semibold transition-colors",
+                category === f ? "bg-sidebar-active text-sidebar-foreground shadow-md" : "border bg-card text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground"
+              )}
+            >
+              {f}
+            </button>
+          ))}
         </div>
 
         {items.length === 0 ? (
-          <p className="rounded-xl border border-dashed py-16 text-center text-muted-foreground">No drinks match "{search}". Try a different name or category.</p>
+          <p className="rounded-xl border border-dashed py-16 text-center text-muted-foreground">
+            {filters.q ? `No drinks match "${filters.q}". Try a different name or category.` : "No items to show. Try a different category or filter."}
+          </p>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {items.map((item) => (
-              <Card key={item.id} className={cn("flex gap-3 p-3 shadow-sm", !item.available && "opacity-60")}>
-                <MenuImage src={item.image} alt={item.name} className="size-24 shrink-0 rounded-xl sm:size-28" />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <h3 className="font-bold leading-tight">{item.name}</h3>
-                  <p className="mt-1 font-bold">{peso(item.price)}</p>
-                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
-                  <div className="mt-auto flex items-center justify-between pt-2">
-                    {item.available ? <Badge variant="tag">{item.tag ?? item.category}</Badge> : <Badge variant="destructive">Sold out</Badge>}
-                    {cartQtyMap[item.id] ? <Badge variant="primary" className="ml-2">{cartQtyMap[item.id]} in cart</Badge> : null}
-                    <Button size="icon" variant="secondary" className="size-8 rounded-lg" disabled={!item.available} onClick={() => addToCart(item.id)} aria-label={`Add ${item.name} to order`}>
-                      <Plus />
-                    </Button>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+            {items.map((item) => {
+              const inCart = cartQtyMap[item.id]
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={!item.available}
+                  onClick={() => addToCart(item.id)}
+                  aria-label={`Add ${item.name} to order`}
+                  className={cn(
+                    "group relative flex min-h-[11rem] flex-col rounded-2xl border bg-card p-5 text-left shadow-md shadow-primary/5 transition-all",
+                    "hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    inCart && "border-primary ring-1 ring-primary",
+                    !item.available && "cursor-not-allowed opacity-60 hover:border-border hover:shadow-sm"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <Badge variant="tag">{item.tag ?? item.category}</Badge>
+                    {!item.available ? <Badge variant="destructive">Sold out</Badge> : inCart ? <Badge>{inCart} in order</Badge> : null}
                   </div>
-                </div>
-              </Card>
-            ))}
+                  <h3 className="mt-3 text-lg font-bold leading-tight">{item.name}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
+                  <div className="mt-auto flex items-end justify-between pt-4">
+                    <p>
+                      <span className="text-2xl font-bold tabular-nums text-primary">{peso(item.price)}</span>
+                      <span className="ml-2 text-sm text-muted-foreground">/ 1 pcs</span>
+                    </p>
+                    <span aria-hidden className="grid size-10 place-items-center rounded-xl bg-sidebar-active text-sidebar-foreground shadow-md transition-transform group-hover:scale-110 group-active:scale-95">
+                      <Plus className="size-5" strokeWidth={2.5} />
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
@@ -366,7 +394,7 @@ export default function OrderPage() {
         The desktop and mobile panels both render a live tender field. They are
         separate instances so each keeps its own input focus.
       */}
-      <aside className="sticky top-0 hidden w-80 shrink-0 xl:block">
+      <aside className="hidden w-[22rem] shrink-0 border-l xl:block">
         <CartPanel
           tenderRaw={tenderRaw}
           onTenderChange={setTenderRaw}
@@ -376,7 +404,7 @@ export default function OrderPage() {
         />
       </aside>
 
-      {cartLinesCount > 0 && (
+      {cartCount > 0 && (
         <button
           onClick={() => setCartOpen(true)}
           className="fixed bottom-20 right-4 z-30 flex items-center gap-3 rounded-full bg-primary px-5 py-3 font-bold text-primary-foreground shadow-xl lg:bottom-6 xl:hidden"
@@ -385,7 +413,7 @@ export default function OrderPage() {
         </button>
       )}
       <Dialog open={cartOpen} onOpenChange={setCartOpen}>
-        <DialogContent className="max-w-md border-0 bg-transparent p-0 shadow-none [&>button]:hidden">
+        <DialogContent className="max-h-[90vh] max-w-md overflow-hidden rounded-2xl p-0 [&>button]:hidden">
           <DialogTitle className="sr-only">Current order</DialogTitle>
           <CartPanel
             tenderRaw={tenderRaw}
