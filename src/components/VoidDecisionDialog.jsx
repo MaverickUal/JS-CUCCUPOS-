@@ -30,7 +30,7 @@ export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
     setError("")
   }, [open, order?.id, mode])
 
-  if (!order || !order.voidRequest) return null
+  if (!order || order.status !== "pending_void") return null
 
   const approving = mode === "approve"
   const reasonError = approving ? null : validateReason(reason)
@@ -40,7 +40,7 @@ export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
     inFlight.current = true
     setBusy(true)
     setError("")
-    const res = approving ? await approveVoid(order) : await declineVoid(order, reason.trim())
+    const res = approving ? await approveVoid(order, "cancelled") : await declineVoid(order)
     inFlight.current = false
     setBusy(false)
     if (!res.success) {
@@ -63,12 +63,12 @@ export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
           <DialogDescription>
             {approving
               ? "The order will be cancelled and excluded from sales totals. It is kept in the records. Any cash already returned to the customer must be recorded separately."
-              : `The order returns to its previous status (${order.voidRequest.previousOrderStatus}). The cashier sees your reason.`}
+              : `The order returns to its previous status (${order.previousStatus || "unknown"}). The cashier sees your reason.`}
           </DialogDescription>
         </DialogHeader>
 
         <OrderSummary order={order} />
-        <VoidRequestInfo request={order.voidRequest} />
+        <VoidRequestInfo order={order} />
 
         {!approving && (
           <div className="space-y-1.5">

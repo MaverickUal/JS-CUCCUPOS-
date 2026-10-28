@@ -488,6 +488,82 @@ export const updateOrderStatus = async (customerId, id, status) => {
 }
 
 /**
+ * Cashier requests void on their own order.
+ */
+export const requestVoid = async (orderId, reason) => {
+  try {
+    const user = auth.currentUser
+    if (!user) return { success: false, message: "Sign in to continue." }
+    const profileSnap = await get(ref(database, `users/${user.uid}`))
+    if (!profileSnap.exists()) return { success: false, message: "User profile not found." }
+    const profile = profileSnap.val()
+    if (profile?.role !== "cashier") return { success: false, message: "Only a cashier can request a void." }
+    if (profile?.disabled === true) return { success: false, message: "This account is disabled." }
+
+    const orderRef = ref(database, `orders/${user.uid}/${orderId}`)
+    const result = await runTransaction(
+      orderRef,
+      (current) => {
+        if (!current) return current
+        const status = String(current.status ?? "")
+        if (status === "pending_void") return { ...current, __abort: true }
+        if (!["pending", "preparing", "ready"].includes(status)) return { ...current, __abort: true }
+        return {
+          ...current,
+          status: "pending_void",
+          previousStatus: status,
+        }
+      },
+      { applyLocally: false }
+    )
+    if (!result.committed) return { success: false, message: "Could not apply void request. Try again." }
+    return { success: true, message: "Void request submitted.", data: { status: "pending_void", previousStatus: result.snapshot?.val()?.previousStatus } }
+  } catch (e) {
+    return { success: false, message: e?.message || "Could not request void." }
+  }
+}
+
+/**
+ * Admin approves or declines a void request.
+ * decision = "cancelled" (approve) or "declined" (decline)
+ */
+export const approveVoid = async (customerId, orderId, decision) => {
+  try {
+    const user = auth.currentUser
+    if (!user) return { success: false, message: "Sign in to continue." }
+    const profileSnap = await get(ref(database, `users/${user.uid}`))
+    if (!profileSnap.exists() || profileSnap.val()?.role !== "admin") return { success: false, message: "Only an admin can approve/decline voids." }
+
+    const orderRef = ref(database, `orders/${customerId}/${orderId}`)
+    const result = await runTransaction(
+      orderRef,
+      (current) => {
+        if (!current) return current
+        const status = String(current.status ?? "")
+        if (status !== "pending_void") return current
+        if (decision === "cancelled") {
+          const next = { ...current, status: "cancelled" }
+          delete next.previousStatus
+          return next
+        }
+        if (decision === "declined") {
+          const prev = String(current.previousStatus ?? status)
+          const next = { ...current, status: prev }
+          delete next.previousStatus
+          return next
+        }
+        return current
+      },
+      { applyLocally: false }
+    )
+    if (!result.committed) return { success: false, message: "Could not apply decision. Try again." }
+    return { success: true, message: "Void decision applied.", data: { status: result.snapshot?.val()?.status } }
+  } catch (e) {
+    return { success: false, message: e?.message || "Could not apply decision." }
+  }
+}
+
+/**
  * Delete an order
  */
 export const deleteOrder = async (customerId, id) => {

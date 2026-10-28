@@ -113,7 +113,7 @@ export default function AdminOrders() {
                   <li key={i.menuItemId} className="flex justify-between"><span>{i.qty} × {i.name}</span><span>{peso(i.qty * i.price)}</span></li>
                 ))}
               </ul>
-              <VoidRequestInfo request={o.voidRequest} />
+              <VoidRequestInfo order={o} />
               <div className="flex flex-wrap justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setSelectedId(o.id)}>Details</Button>
                 <Button size="sm" variant="outline" onClick={() => setDecision({ id: o.id, mode: "decline" })}><X /> Decline Void</Button>
@@ -195,7 +195,7 @@ export default function AdminOrders() {
               )}
               {selected.note && <p className="text-sm"><b>Note:</b> {selected.note}</p>}
 
-              {selected.voidRequest && <VoidAudit order={selected} />}
+              {selected.status === "pending_void" && <VoidAudit order={selected} />}
 
               {Object.values(selected.refunds ?? {}).length > 0 && (
                 <div className="space-y-1.5 rounded-lg border border-destructive/30 p-2.5 text-sm">

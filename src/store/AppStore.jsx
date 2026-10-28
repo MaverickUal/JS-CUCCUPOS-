@@ -8,10 +8,9 @@ import { toast } from "sonner"
 import { computeDiscount } from "@/lib/discounts"
 import { sortByCreatedAtDesc } from "@/lib/stats"
 import {
-  requestVoid as requestVoidCall,
-  approveVoid as approveVoidCall,
-  declineVoid as declineVoidCall,
-} from "@/lib/functionsClient"
+  requestVoid as requestVoidAction,
+  approveVoid as approveVoidAction,
+} from "@/lib/actions"
 import {
   getMenuItems,
   getOrders,
@@ -283,17 +282,19 @@ export function StoreProvider({ children }) {
   const toResult = (res, message) =>
     res.ok ? { success: true, message } : { success: false, message: res.error }
 
-  const requestVoid = async (orderId, reason) =>
-    toResult(await requestVoidCall(orderId, reason), "Void request submitted.")
+  const requestVoid = async (orderId, reason) => {
+    const res = await requestVoidAction(orderId, reason)
+    return toResult(res, res.success ? "Void request submitted." : (res.message || "Failed"))
+  }
 
-  const approveVoid = async (order) =>
-    toResult(await approveVoidCall(order.customerId, order.id, order.voidRequest?.requestId), "Void request approved.")
+  const approveVoid = async (order, decision) => {
+    const customerId = order.customerId || (currentUser?.id === order.customerId ? order.customerId : null)
+    const orderId = order.id
+    const res = await approveVoidAction(customerId, orderId, decision)
+    return toResult(res, res.success ? "Void decision applied." : (res.message || "Failed"))
+  }
 
-  const declineVoid = async (order, reason) =>
-    toResult(
-      await declineVoidCall(order.customerId, order.id, order.voidRequest?.requestId, reason),
-      "Void request declined."
-    )
+  const declineVoid = async (order) => approveVoid(order, "declined")
 
   const setCashierEnabled = async (uid, enabled) =>
     setCashierEnabledAction(uid, enabled)
