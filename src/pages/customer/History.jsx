@@ -73,9 +73,9 @@ export default function HistoryPage() {
           </ul>
           {o.note && <p className="mt-2 text-xs italic text-muted-foreground">Note: {o.note}</p>}
           {o.status !== "cancelled" && (
-            <Progress status={o.status === "pending_void" ? o.voidRequest?.previousOrderStatus : o.status} />
+            <Progress status={o.status === "pending_void" ? (o.previousStatus || o.status) : o.status} />
           )}
-          {o.voidRequest && <div className="mt-3"><VoidAudit order={o} /></div>}
+          {o.status === "pending_void" && <div className="mt-3"><VoidAudit order={o} /></div>}
           <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
             <p className="font-bold">Total {peso(o.total)}</p>
             <div className="flex gap-2">

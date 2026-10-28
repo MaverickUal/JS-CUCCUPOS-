@@ -4,30 +4,13 @@
       ".read": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin' && root.child('users/' + auth.uid + '/disabled').val() !== true",
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'admin') && root.child('users/' + auth.uid + '/disabled').val() !== true",
-        ".write": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'admin') && root.child('users/' + auth.uid + '/disabled').val() !== true",
-        "name": {
-          ".validate": "newData.isString() && newData.val().length > 0"
-        },
-        "email": {
-          ".validate": "newData.isString() && (auth.uid === $uid ? newData.val() === auth.token.email : root.child('users/' + auth.uid + '/role').val() === 'admin')"
-        },
-        "role": {
-          ".validate": "newData.isString() && (newData.val() === 'cashier' || newData.val() === 'admin') && (root.child('users/' + auth.uid + '/role').val() === 'admin' ? true : (!data.exists() ? newData.val() === 'cashier' : newData.val() === data.val())) && (auth.uid === $uid ? (!data.exists() ? newData.val() === 'cashier' : newData.val() === data.val()) : true)"
-        },
-        "disabled": {
-          ".validate": "newData.isBoolean() && root.child('users/' + auth.uid + '/role').val() === 'admin' && auth.uid !== $uid"
-        },
-        "createdAt": {
-          ".validate": "newData.isString()"
-        },
-        ".validate": "newData.hasChildren(['name', 'email', 'role', 'createdAt'])"
+        ".write": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'admin') && root.child('users/' + auth.uid + '/disabled').val() !== true"
       }
     },
     "menu": {
       ".read": true,
       "$itemId": {
-        ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin' && root.child('users/' + auth.uid + '/disabled').val() !== true",
-        ".validate": "newData.hasChildren(['name', 'price', 'description', 'category', 'available']) && newData.child('price').isNumber() && newData.child('price').val() > 0 && newData.child('available').isBoolean()"
+        ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin' && root.child('users/' + auth.uid + '/disabled').val() !== true"
       }
     },
     "orders": {
@@ -35,47 +18,8 @@
       "$customerId": {
         ".read": "auth != null && (auth.uid === $customerId || root.child('users/' + auth.uid + '/role').val() === 'admin') && root.child('users/' + auth.uid + '/disabled').val() !== true",
         "$orderId": {
-          ".write": "auth != null && root.child('users/' + auth.uid + '/disabled').val() !== true && ((!data.exists() && auth.uid === $customerId && root.child('users/' + auth.uid + '/role').val() !== null && newData.child('customerId').val() === $customerId && newData.child('status').val() === 'pending' && !newData.child('voidRequest').exists() && !newData.child('voidHistory').exists()) || (data.exists() && root.child('users/' + auth.uid + '/role').val() === 'admin' && (newData.exists() ? (newData.child('voidRequest').exists() === data.child('voidRequest').exists() && newData.child('voidRequest/requestId').val() === data.child('voidRequest/requestId').val() && newData.child('voidRequest/status').val() === data.child('voidRequest/status').val() && newData.child('voidRequest/reason').val() === data.child('voidRequest/reason').val() && newData.child('voidRequest/requestedBy').val() === data.child('voidRequest/requestedBy').val() && newData.child('voidRequest/requestedByName').val() === data.child('voidRequest/requestedByName').val() && newData.child('voidRequest/requestedAt').val() === data.child('voidRequest/requestedAt').val() && newData.child('voidRequest/previousOrderStatus').val() === data.child('voidRequest/previousOrderStatus').val() && newData.child('voidRequest/decision').val() === data.child('voidRequest/decision').val() && newData.child('voidRequest/decisionReason').val() === data.child('voidRequest/decisionReason').val() && newData.child('voidRequest/decidedBy').val() === data.child('voidRequest/decidedBy').val() && newData.child('voidRequest/decidedByName').val() === data.child('voidRequest/decidedByName').val() && newData.child('voidRequest/decidedAt').val() === data.child('voidRequest/decidedAt').val() && newData.child('voidHistory').val() === data.child('voidHistory').val() && ((newData.child('status').val() === 'pending_void') === (data.child('status').val() === 'pending_void'))) : !data.child('voidRequest').exists())))",
-          ".validate": "newData.hasChildren(['customerId', 'customerName', 'items', 'total', 'paymentMethod', 'status', 'createdAt']) && newData.child('customerId').val() === $customerId && newData.child('total').isNumber() && newData.child('total').val() > 0 && newData.child('status').isString() && (newData.child('status').val() === 'pending' || newData.child('status').val() === 'preparing' || newData.child('status').val() === 'ready' || newData.child('status').val() === 'completed' || newData.child('status').val() === 'cancelled' || newData.child('status').val() === 'pending_void') && (!data.exists() || (newData.child('customerId').val() === data.child('customerId').val() && newData.child('total').val() === data.child('total').val() && newData.child('createdAt').val() === data.child('createdAt').val() && newData.child('items').val() === data.child('items').val() && newData.child('paymentMethod').val() === data.child('paymentMethod').val() && newData.child('subtotal').val() === data.child('subtotal').val() && newData.child('discountType').val() === data.child('discountType').val() && newData.child('discountAmount').val() === data.child('discountAmount').val()))",
-          "subtotal": {
-            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0)"
-          },
-          "discountType": {
-            ".validate": "!newData.exists() || newData.val() === 'none' || newData.val() === 'pwd' || newData.val() === 'senior'"
-          },
-          "discountAmount": {
-            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0)"
-          },
-          "items": {
-            "$itemKey": {
-              ".validate": "newData.hasChildren(['menuItemId', 'name', 'price', 'qty', 'category']) && newData.child('qty').val() >= 1 && newData.child('qty').val() <= 99 && newData.child('price').isNumber() && newData.child('price').val() > 0 && newData.child('price').val() === root.child('menu/' + $itemKey + '/price').val()"
-            }
-          },
-          "refunds": {
-            ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin' && root.child('users/' + auth.uid + '/disabled').val() !== true",
-            "$refundId": {
-              ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin' && root.child('users/' + auth.uid + '/disabled').val() !== true && (!data.exists() || newData.val() === data.val())",
-              ".validate": "newData.hasChildren(['id', 'orderId', 'amount', 'reason', 'status', 'createdAt', 'approvedBy']) && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && newData.child('reason').isString() && newData.child('reason').val().length >= 3 && newData.child('status').val() === 'completed' && newData.child('approvedBy').val() === auth.uid && newData.child('amount').val() <= newData.parent().parent().child('total').val() && newData.parent().parent().child('status').val() !== 'pending_void'"
-            }
-          },
-          "refundedTotal": {
-            ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= newData.parent().child('total').val())"
-          },
-          "status": {
-            ".validate": "newData.isString() && (newData.val() === 'pending' || newData.val() === 'preparing' || newData.val() === 'ready' || newData.val() === 'completed' || newData.val() === 'cancelled' || newData.val() === 'pending_void') && ((newData.val() === 'pending_void') === (data.val() === 'pending_void'))"
-          },
-          "voidRequest": {
-            "$field": {
-              ".validate": "newData.val() === data.val()"
-            }
-          },
-          "voidHistory": {
-            "$requestId": {
-              "$field": {
-                ".validate": "newData.val() === data.val()"
-              }
-            }
-          }
+          ".write": "auth != null && root.child('users/' + auth.uid + '/disabled').val() !== true && ((!data.exists() && auth.uid === $customerId && root.child('users/' + auth.uid + '/role').val() !== null && newData.child('customerId').val() === $customerId && newData.child('status').val() === 'pending' && !newData.child('previousStatus').exists()) || (data.exists() && auth.uid === $customerId && root.child('users/' + auth.uid + '/role').val() === 'cashier' && newData.child('status').val() === 'pending_void' && newData.child('previousStatus').val() === data.child('status').val()) || (data.exists() && root.child('users/' + auth.uid + '/role').val() === 'admin' && ((newData.child('status').val() === 'cancelled' && data.child('status').val() === 'pending_void') || (newData.child('status').val() === data.child('previousStatus').val() && data.child('status').val() === 'pending_void'))))",
+          ".validate": "newData.hasChildren(['customerId','customerName','items','total','paymentMethod','status','createdAt']) && newData.child('customerId').val() === $customerId && newData.child('total').isNumber() && newData.child('total').val() > 0 && newData.child('status').isString() && (newData.child('status').val() === 'pending' || newData.child('status').val() === 'preparing' || newData.child('status').val() === 'ready' || newData.child('status').val() === 'completed' || newData.child('status').val() === 'cancelled' || newData.child('status').val() === 'pending_void')"
         }
       }
     }
