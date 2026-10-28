@@ -279,19 +279,16 @@ export function StoreProvider({ children }) {
   // refuse client writes to the void fields. Each resolves to { success, message }
   // like the other store actions. The orders listener delivers the new state, so
   // nothing is patched locally.
-  const toResult = (res, message) =>
-    res.ok ? { success: true, message } : { success: false, message: res.error }
-
   const requestVoid = async (orderId, reason) => {
     const res = await requestVoidAction(orderId, reason)
-    return toResult(res, res.success ? "Void request submitted." : (res.message || "Failed"))
+    return res.success ? { success: true, message: res.message || "Void request submitted." } : { success: false, message: res.message || "Failed" }
   }
 
   const approveVoid = async (order, decision) => {
     const customerId = order.customerId || (currentUser?.id === order.customerId ? order.customerId : null)
     const orderId = order.id
     const res = await approveVoidAction(customerId, orderId, decision)
-    return toResult(res, res.success ? "Void decision applied." : (res.message || "Failed"))
+    return res.success ? { success: true, message: res.message || "Void decision applied." } : { success: false, message: res.message || "Failed" }
   }
 
   const declineVoid = async (order) => approveVoid(order, "declined")
