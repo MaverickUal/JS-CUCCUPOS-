@@ -106,6 +106,7 @@ const SIDEBAR_KEY = "cuccupos.sidebar.expanded"
 
 /** Icon rail that expands to show labels. Shared by the desktop sidebar and the mobile drawer. */
 function SideNav({ nav, expanded, onToggle, onNavigate, onLogout, closeIcon }) {
+  const location = useLocation()
   const item = "flex h-11 w-full items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
   const layout = expanded ? "justify-start gap-3 px-3" : "justify-center"
   return (
@@ -133,6 +134,7 @@ function SideNav({ nav, expanded, onToggle, onNavigate, onLogout, closeIcon }) {
           to={to}
           title={expanded ? undefined : label}
           aria-label={label}
+          aria-current={location.pathname === to ? "page" : undefined}
           onClick={onNavigate}
           className={({ isActive }) =>
             cn(item, layout, isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground")
