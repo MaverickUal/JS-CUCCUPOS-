@@ -9,6 +9,13 @@ export const MAX_REASON = 300
 export const isPendingVoid = (o) => o.status === "pending_void"
 export const canRequestVoid = (o) => VOIDABLE_STATUSES.includes(o?.status) && !isPendingVoid(o)
 
+export function validateReason(value) {
+  const text = String(value ?? "").trim()
+  if (text.length < MIN_REASON) return `Enter a reason of at least ${MIN_REASON} characters.`
+  if (text.length > MAX_REASON) return `Keep the reason under ${MAX_REASON} characters.`
+  return null
+}
+
 export function voidBlockedReason(order) {
   if (!order) return "Order not found."
   if (isPendingVoid(order)) return "A void request is already pending."
