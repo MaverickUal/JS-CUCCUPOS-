@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { useStore } from "@/store/AppStore"
 import { orderNo, peso, formatDateTime } from "@/lib/format"
 import { remainingRefundable, refundedOf } from "@/lib/finance"
+import { useGuardedSubmit } from "@/lib/useGuardedSubmit"
+
 /**
  * Refund dialog for the Owner/Manager.
  *
@@ -25,8 +27,7 @@ export function RefundDialog({
   const { refundOrder, currentUser } = useStore()
   const [amount, setAmount] = useState("")
   const [reason, setReason] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
+  const { busy, error, setError, run } = useGuardedSubmit()
 
   useEffect(() => {
     if (!open) return
@@ -46,15 +47,8 @@ export function RefundDialog({
   const fullyRefunded = remaining <= 0.004
 
   async function submit() {
-    setBusy(true)
-    setError("")
-    const res = await refundOrder(order.id, entered, reason.trim(), order.customerId)
-    setBusy(false)
-    if (!res.success) {
-      setError(res.message)
-      toast.error(res.message)
-      return
-    }
+    const res = await run(() => refundOrder(order.id, entered, reason.trim(), order.customerId))
+    if (!res) return
     toast.success(`${orderNo(order)} · ${peso(entered)} refunded`)
     onOpenChange(false)
   }

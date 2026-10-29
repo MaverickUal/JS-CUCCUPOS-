@@ -13,10 +13,6 @@ import {
   remove,
   get,
   onValue,
-  query,
-  orderByChild,
-  equalTo,
-  limitToFirst,
   runTransaction,
 } from "firebase/database"
 import {
@@ -30,6 +26,7 @@ import { z } from "zod"
 import { computeDiscount } from "@/lib/discounts"
 import { findConflictingMenuItems } from "@/lib/duplicates"
 import { applyRefund } from "@/lib/refunds"
+import { round2 } from "@/lib/format"
 
 // ---------------------------------------------------------------------------
 // Firebase initialization
@@ -151,24 +148,23 @@ export const orderSchema = z
       lines.map((l) => ({ category: l.category, qty: l.qty, price: l.price })),
       o.discountType ?? "none"
     )
-    const r2 = (n) => Math.round(n * 100) / 100
 
-    if (o.subtotal !== undefined && r2(o.subtotal) !== r2(expected.subtotal)) {
+    if (o.subtotal !== undefined && round2(o.subtotal) !== round2(expected.subtotal)) {
       ctx.addIssue({ code: "custom", message: "Subtotal does not match the line items.", path: ["subtotal"] })
     }
-    if (o.total !== r2(expected.total)) {
+    if (o.total !== round2(expected.total)) {
       ctx.addIssue({ code: "custom", message: "Total does not match the discount calculation.", path: ["total"] })
     }
     const statedDiscount = o.discountAmount ?? 0
-    if (r2(statedDiscount) !== r2(expected.amount)) {
+    if (round2(statedDiscount) !== round2(expected.amount)) {
       ctx.addIssue({ code: "custom", message: "Discount amount is not valid.", path: ["discountAmount"] })
     }
     if (o.cashTendered !== undefined && o.cashTendered + 0.004 < expected.total) {
       ctx.addIssue({ code: "custom", message: "Cash tendered does not cover the total.", path: ["cashTendered"] })
     }
     if (o.changeGiven !== undefined) {
-      const expectedChange = r2((o.cashTendered ?? 0) - expected.total)
-      if (r2(o.changeGiven) !== expectedChange) {
+      const expectedChange = round2((o.cashTendered ?? 0) - expected.total)
+      if (round2(o.changeGiven) !== expectedChange) {
         ctx.addIssue({ code: "custom", message: "Change does not match the tender.", path: ["changeGiven"] })
       }
     }
@@ -253,22 +249,6 @@ export const getMenuItems = (callback) =>
 export const getMenuItemsOnce = async () => {
   const snapshot = await get(menuRef)
   return valToList(snapshot.val())
-}
-
-/**
- * Query menu item by name (simple query)
- */
-export const getMenuItemByName = async (name) => {
-  const snapshot = await get(query(menuRef, orderByChild("name"), equalTo(name), limitToFirst(1)))
-  return snapshot.exists()
-}
-
-/**
- * Query menu items by category
- */
-export const getMenuItemsByCategory = async (category) => {
-  const snapshot = await get(query(menuRef, orderByChild("category"), equalTo(category)))
-  return snapshotToList(snapshot)
 }
 
 /**
@@ -395,27 +375,6 @@ export const getOrdersOnce = async (customerId) => {
 }
 
 /**
- * Get orders by customer ID
- */
-export const getOrdersByCustomer = async (customerId) => {
-  const snapshot = await get(refAt(`orders/${customerId}`))
-  return flattenOrders(snapshot.val(), "flat")
-}
-
-/**
- * Get orders by status (admin feed, filtered client-side)
- *
- * Not a server query on purpose: orders are nested one level by customer, so
- * `orderByChild("status")` at /orders would compare whole customers rather than
- * individual orders. The admin already holds the full list, so filtering it here
- * is both correct and cheap.
- */
-export const getOrdersByStatus = async (status) => {
-  const orders = await getOrdersOnce()
-  return orders.filter((o) => o.status === status)
-}
-
-/**
  * Update order status
  */
 export const updateOrderStatus = async (customerId, id, status) => {
@@ -500,18 +459,6 @@ export const approveVoid = async (customerId, orderId, decision) => {
     return ok("Void decision applied.", { status: result.snapshot?.val()?.status })
   } catch (e) {
     return failWith(e, "Could not apply decision.")
-  }
-}
-
-/**
- * Delete an order
- */
-export const deleteOrder = async (customerId, id) => {
-  try {
-    await remove(refAt(`orders/${customerId}/${id}`))
-    return ok("Order deleted successfully")
-  } catch (error) {
-    return failWith(error)
   }
 }
 
@@ -631,43 +578,6 @@ export const subscribeUserProfile = (uid, callback) =>
   })
 
 /**
- * Get all users once (get)
- */
-export const getUsersOnce = async () => {
-  const snapshot = await get(usersRef)
-  return snapshotToList(snapshot)
-}
-
-/**
- * Update user profile
- */
-export const updateUser = async (id, userData) => {
-  try {
-    await update(profileRef(id), userData)
-    return ok("User updated successfully", { id, ...userData })
-  } catch (error) {
-    return failWith(error)
-  }
-}
-
-/**
- * Delete a user.
- *
- * Retained only for a user who has no orders and no refunds; the UI routes staff
- * removal through `disableCashier` in functionsClient instead, because deleting
- * the RTDB profile would orphan their past orders and would not touch their
- * Authentication account anyway. See functions/src/index.js.
- */
-export const deleteUser = async (id) => {
-  try {
-    await remove(profileRef(id))
-    return ok("User deleted successfully")
-  } catch (error) {
-    return failWith(error)
-  }
-}
-
-/**
  * Enable/disable a cashier through the RTDB profile flag.
  *
  * This blocks access to CuccuPOS (login checks, active sessions and the
@@ -746,7 +656,7 @@ export const refundOrder = async (orderId, amount, reason, customerId) => {
   try {
     if (!orderId?.trim()) return fail("Order id is required.")
     if (!reason || reason.trim().length < 3) return fail("A refund reason of at least 3 characters is required.")
-    const requested = Math.round(Number(amount) * 100) / 100
+    const requested = round2(Number(amount))
     if (!Number.isFinite(requested) || requested <= 0) return fail("Refund amount must be greater than zero.")
 
     const { user, profile, error } = await requireUser({

@@ -1,4 +1,4 @@
-const r2 = (n) => Math.round(n * 100) / 100
+import { round2 as r2 } from "@/lib/format"
 
 export const EPSILON = 0.004
 

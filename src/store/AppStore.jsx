@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { computeDiscount } from "@/lib/discounts"
 import { sortByCreatedAtDesc } from "@/lib/stats"
+import { round2 } from "@/lib/format"
 import {
   getMenuItems,
   getOrders,
@@ -174,9 +175,6 @@ export function StoreProvider({ children }) {
       return newCart
     })
 
-  /** Round to 2 decimals so peso maths never drifts on floats (0.1 + 0.2). */
-  const money = (n) => Math.round(n * 100) / 100
-
   /** Discount breakdown for the current cart. */
   const previewDiscount = (type) =>
     computeDiscount(
@@ -190,8 +188,8 @@ export function StoreProvider({ children }) {
     // The discount is recomputed from the cart here rather than accepted from the
     // caller, so the persisted total always matches the line items.
     const breakdown = previewDiscount(discountType)
-    const tendered = money(cashTendered)
-    const changeGiven = money(tendered - breakdown.total)
+    const tendered = round2(cashTendered)
+    const changeGiven = round2(tendered - breakdown.total)
 
     if (tendered + 0.004 < breakdown.total) {
       toast.error("Cash received does not cover the total.")

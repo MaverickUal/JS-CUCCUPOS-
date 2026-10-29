@@ -52,6 +52,8 @@
  *
  * All monetary values are PHP pesos.
  */
+import { round2 } from "@/lib/format"
+
 
 export const DISCOUNT_TYPES = ["none", "pwd", "senior"]
 export const DISCOUNT_LABELS = {
@@ -77,7 +79,6 @@ export const ELIGIBLE_CATEGORIES = null
 
 export const MIN_DISCOUNTABLE_AMOUNT = 1
 
-const round2 = (n) => Math.round(n * 100) / 100
 
 /**
  * Whether a category qualifies for a discount.

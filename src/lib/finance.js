@@ -1,20 +1,9 @@
 import { validOrders } from "@/lib/stats"
+import { round2 as r2 } from "@/lib/format"
+import { refundedOf, remainingRefundable } from "@/lib/refunds"
 
-const r2 = (n) => Math.round(n * 100) / 100
-
-/** Sum of completed refunds on an order, preferring the cached running total. */
-export function refundedOf(o) {
-  const fromRecords = Object.values(o.refunds ?? {})
-    .filter((r) => r?.status === "completed")
-    .reduce((sum, r) => sum + Number(r.amount ?? 0), 0)
-  const cached = typeof o.refundedTotal === "number" ? o.refundedTotal : 0
-  // Take the larger of the two: a partially migrated order can't under-report.
-  return r2(Math.max(cached, fromRecords))
-}
-
-export function remainingRefundable(o) {
-  return r2(Math.max(0, Number(o.total ?? 0) - refundedOf(o)))
-}
+// Refund arithmetic lives in refunds.js; re-exported so existing imports keep working.
+export { refundedOf, remainingRefundable }
 
 export function totalsFor(orders, scoped) {
   const sales = validOrders(scoped)

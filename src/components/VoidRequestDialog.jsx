@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Ban, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { OrderSummary } from "@/components/OrderSummary"
 import { useStore } from "@/store/AppStore"
 import { orderNo } from "@/lib/format"
 import { MAX_REASON, validateReason } from "@/lib/voids"
+import { useGuardedSubmit } from "@/lib/useGuardedSubmit"
 
 /**
  * Cashier asks the Owner/Manager to void an order.
@@ -21,10 +22,7 @@ export function VoidRequestDialog({ order, open, onOpenChange }) {
   const { requestVoid } = useStore()
   const [reason, setReason] = useState("")
   const [confirming, setConfirming] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
-  // A ref, not state: two fast clicks can both read `busy === false` before React re-renders.
-  const inFlight = useRef(false)
+  const { busy, error, setError, run } = useGuardedSubmit()
 
   useEffect(() => {
     if (!open) return
@@ -38,18 +36,8 @@ export function VoidRequestDialog({ order, open, onOpenChange }) {
   const reasonError = validateReason(reason)
 
   async function submit() {
-    if (inFlight.current) return
-    inFlight.current = true
-    setBusy(true)
-    setError("")
-    const res = await requestVoid(order.id, reason.trim())
-    inFlight.current = false
-    setBusy(false)
-    if (!res.success) {
-      setError(res.message)
-      toast.error(res.message)
-      return
-    }
+    const res = await run(() => requestVoid(order.id, reason.trim()))
+    if (!res) return
     toast.success(`${orderNo(order)} · void request sent`)
     onOpenChange(false)
   }

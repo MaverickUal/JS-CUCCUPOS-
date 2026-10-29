@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { VoidRequestInfo } from "@/components/VoidAudit"
 import { useStore } from "@/store/AppStore"
 import { orderNo } from "@/lib/format"
 import { MAX_REASON, validateReason } from "@/lib/voids"
+import { useGuardedSubmit } from "@/lib/useGuardedSubmit"
 
 /**
  * Owner/Manager confirms an Approve or Decline decision.
@@ -20,9 +21,7 @@ import { MAX_REASON, validateReason } from "@/lib/voids"
 export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
   const { approveVoid, declineVoid } = useStore()
   const [reason, setReason] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
-  const inFlight = useRef(false)
+  const { busy, error, setError, run } = useGuardedSubmit()
 
   useEffect(() => {
     if (!open) return
@@ -36,18 +35,8 @@ export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
   const reasonError = approving ? null : validateReason(reason)
 
   async function submit() {
-    if (inFlight.current) return
-    inFlight.current = true
-    setBusy(true)
-    setError("")
-    const res = approving ? await approveVoid(order, "cancelled") : await declineVoid(order)
-    inFlight.current = false
-    setBusy(false)
-    if (!res.success) {
-      setError(res.message)
-      toast.error(res.message)
-      return
-    }
+    const res = await run(() => (approving ? approveVoid(order, "cancelled") : declineVoid(order)))
+    if (!res) return
     toast.success(`${orderNo(order)} · ${res.message}`)
     onOpenChange(false)
   }

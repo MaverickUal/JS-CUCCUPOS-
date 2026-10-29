@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { QuantityStepper } from "@/components/QuantityStepper"
 import { DiscountPicker } from "@/components/DiscountPicker"
 import { useStore } from "@/store/AppStore"
-import { orderNo, peso } from "@/lib/format"
+import { orderNo, peso, round2 } from "@/lib/format"
 import { changeFor } from "@/lib/discounts"
 import { cn } from "@/lib/utils"
 import { applyMenuFilters, useMenuFilters } from "@/lib/useMenuFilters"
@@ -20,7 +20,20 @@ const FILTERS = ["All", ...CATEGORIES]
 /** Common peso notes/coins, plus an "exact" shortcut, to save the cashier typing. */
 const QUICK_TENDER = [20, 50, 100, 200, 500, 1000]
 
-const money = (n) => Math.round(n * 100) / 100
+/** Quick-add notes for the kitchen. */
+const NOTE_OPTIONS = ["Less Ice", "No Sugar", "50% Sugar", "Extra Shot (+₱20)", "Pearls (+₱15)"]
+
+/**
+ * Cash tendered, parsed and compared with what's payable. Derived in one place so
+ * the cart panel and the checkout dialog can never disagree about the change.
+ */
+function useTender(tenderRaw, total) {
+  return useMemo(() => {
+    const amount = round2(parseFloat(tenderRaw) || 0)
+    const { change, sufficient } = changeFor(amount, total)
+    return { raw: tenderRaw, amount, change, sufficient }
+  }, [tenderRaw, total])
+}
 
 function CashTendered({
   tender,
@@ -115,13 +128,7 @@ function CartPanel({
 }) {
   const { cartLines, setQty, removeFromCart, previewDiscount } = useStore()
   const breakdown = previewDiscount(discountType)
-  // Derived here rather than passed in, so the panel and the dialog can never
-  // disagree about the change.
-  const tender = useMemo(() => {
-    const amount = money(parseFloat(tenderRaw) || 0)
-    const { change, sufficient } = changeFor(amount, breakdown.total)
-    return { raw: tenderRaw, amount, change, sufficient }
-  }, [tenderRaw, breakdown.total])
+  const tender = useTender(tenderRaw, breakdown.total)
   const canCheckout = cartLines.length > 0 && tender.sufficient
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-card p-5">
@@ -151,18 +158,16 @@ function CartPanel({
       </div>
       <div className="mt-4 space-y-3 border-t pt-4">
         {cartLines.length > 0 && (
-          <DiscountPicker
-            value={discountType}
-            onChange={onDiscountChange}
-            discountAmount={breakdown.amount}
-            idPrefix="panel"
-          />
-        )}
-        {cartLines.length > 0 && (
-          <MoneySummary breakdown={breakdown} change={tender.change} sufficient={tender.sufficient} />
-        )}
-        {cartLines.length > 0 && (
-          <CashTendered tender={tender} onChange={onTenderChange} total={breakdown.total} idPrefix="panel" />
+          <>
+            <DiscountPicker
+              value={discountType}
+              onChange={onDiscountChange}
+              discountAmount={breakdown.amount}
+              idPrefix="panel"
+            />
+            <MoneySummary breakdown={breakdown} change={tender.change} sufficient={tender.sufficient} />
+            <CashTendered tender={tender} onChange={onTenderChange} total={breakdown.total} idPrefix="panel" />
+          </>
         )}
         <Button className="h-14 w-full rounded-2xl text-base shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]" size="lg" disabled={!canCheckout} onClick={onCheckout}>
           <ShoppingBag className="!size-5" /> Checkout
@@ -190,11 +195,7 @@ function CheckoutDialog({
   const [placed, setPlaced] = useState(null)
 
   const breakdown = previewDiscount(discountType)
-  const tender = useMemo(() => {
-    const amount = money(parseFloat(tenderRaw) || 0)
-    const { change, sufficient } = changeFor(amount, breakdown.total)
-    return { raw: tenderRaw, amount, change, sufficient }
-  }, [tenderRaw, breakdown.total])
+  const tender = useTender(tenderRaw, breakdown.total)
 
   useEffect(() => {
     if (open) return
@@ -268,10 +269,7 @@ function CheckoutDialog({
             </div>
             <CashTendered tender={tender} onChange={onTenderChange} total={breakdown.total} idPrefix="dialog" />
             <div className="flex flex-wrap gap-2">
-              {["Less Ice", "No Sugar", "50% Sugar"].map((opt) => (
-                <Button key={opt} type="button" variant="outline" size="sm" onClick={() => setNote((prev) => (prev ? prev + "; " + opt : opt))}>{opt}</Button>
-              ))}
-              {["Extra Shot (+₱20)", "Pearls (+₱15)"].map((opt) => (
+              {NOTE_OPTIONS.map((opt) => (
                 <Button key={opt} type="button" variant="outline" size="sm" onClick={() => setNote((prev) => (prev ? prev + "; " + opt : opt))}>{opt}</Button>
               ))}
             </div>
@@ -293,7 +291,7 @@ function CheckoutDialog({
 }
 
 export default function OrderPage() {
-  const { menu, addToCart, cartCount } = useStore()
+  const { menu, addToCart, cartCount, cartLines } = useStore()
   const filters = useMenuFilters()
   const [category, setCategory] = useState("All")
   const [tenderRaw, setTenderRaw] = useState("")
@@ -301,7 +299,6 @@ export default function OrderPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
 
-  const cartLines = useStore().cartLines
   const cartQtyMap = useMemo(() => {
     const m = {}
     cartLines.forEach((l) => { m[l.menuItemId] = (m[l.menuItemId] ?? 0) + l.qty })
