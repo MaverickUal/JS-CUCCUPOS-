@@ -75,7 +75,7 @@ export function resolveRange(preset, fromRaw, toRaw) {
   return {
     preset,
     from,
-    to: singleDay ? endOfDay(to) : endOfDay(to),
+    to: endOfDay(to),
     hourly: singleDay && isToday,
     label,
   }

@@ -58,75 +58,32 @@ export function functionsReachable() {
   }
 }
 
-export async function requestRefund(
-  orderId,
-  amount,
-  reason
-) {
+/** Call a deployed function by name, normalising the result to { ok, data } | { ok, error }. */
+async function callFunction(name, payload) {
   try {
-    const call = httpsCallable(
-      functions(),
-      "refundOrder"
-    )
-    const res = await call({ orderId, amount, reason })
+    const res = await httpsCallable(functions(), name)(payload)
     return { ok: true, data: res.data }
   } catch (err) {
     return { ok: false, error: describeFunctionError(err) }
   }
 }
+
+export const requestRefund = (orderId, amount, reason) => callFunction("refundOrder", { orderId, amount, reason })
 
 /** Cashier asks to void one of their own orders. The backend moves it to `pending_void`. */
-export async function requestVoid(orderId, reason) {
-  try {
-    const res = await httpsCallable(functions(), "requestVoid")({ orderId, reason })
-    return { ok: true, data: res.data }
-  } catch (err) {
-    return { ok: false, error: describeFunctionError(err) }
-  }
-}
+export const requestVoid = (orderId, reason) => callFunction("requestVoid", { orderId, reason })
 
 /** Owner/Manager approves a pending request. The order becomes `cancelled`. */
-export async function approveVoid(customerId, orderId, requestId) {
-  try {
-    const res = await httpsCallable(functions(), "approveVoid")({ customerId, orderId, requestId })
-    return { ok: true, data: res.data }
-  } catch (err) {
-    return { ok: false, error: describeFunctionError(err) }
-  }
-}
+export const approveVoid = (customerId, orderId, requestId) =>
+  callFunction("approveVoid", { customerId, orderId, requestId })
 
 /** Owner/Manager declines a pending request with a reason. The order returns to its previous status. */
-export async function declineVoid(customerId, orderId, requestId, reason) {
-  try {
-    const res = await httpsCallable(functions(), "declineVoid")({ customerId, orderId, requestId, reason })
-    return { ok: true, data: res.data }
-  } catch (err) {
-    return { ok: false, error: describeFunctionError(err) }
-  }
-}
+export const declineVoid = (customerId, orderId, requestId, reason) =>
+  callFunction("declineVoid", { customerId, orderId, requestId, reason })
 
-export async function createCashier(input) {
-  try {
-    const call = httpsCallable(functions(), "createCashier")
-    const res = await call(input)
-    return { ok: true, data: res.data }
-  } catch (err) {
-    return { ok: false, error: describeFunctionError(err) }
-  }
-}
+export const createCashier = (input) => callFunction("createCashier", input)
 
-export async function setCashierEnabled(
-  targetUid,
-  enabled
-) {
-  try {
-    const call = httpsCallable(functions(), "setCashierEnabled")
-    const res = await call({ targetUid, enabled })
-    return { ok: true, data: res.data }
-  } catch (err) {
-    return { ok: false, error: describeFunctionError(err) }
-  }
-}
+export const setCashierEnabled = (targetUid, enabled) => callFunction("setCashierEnabled", { targetUid, enabled })
 
 /** Roles the client is allowed to request. Admins are deliberately not creatable here. */
 export const CREATABLE_ROLES = ["cashier"]

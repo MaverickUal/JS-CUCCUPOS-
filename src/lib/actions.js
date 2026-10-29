@@ -64,10 +64,56 @@ const usersRef = ref(database, "users")
 export const makeDisplayId = () => "ORD-" + Date.now().toString(36).toUpperCase()
 
 // ---------------------------------------------------------------------------
+// Small shared helpers
+// ---------------------------------------------------------------------------
+const ok = (message, data) => (data === undefined ? { success: true, message } : { success: true, message, data })
+const fail = (message) => ({ success: false, message })
+const failWith = (error, fallback) => fail(error?.message || fallback)
+
+const refAt = (path) => ref(database, path)
+const profileRef = (uid) => refAt(`users/${uid}`)
+const getProfile = (uid) => get(profileRef(uid))
+
+/** Snapshot value ({ id: record }) -> [{ id, ...record }]. */
+const valToList = (raw) => Object.entries(raw ?? {}).map(([id, value]) => ({ id, ...value }))
+
+/** Same, but via snapshot.forEach (keeps the server's child ordering). */
+const snapshotToList = (snapshot) => {
+  const list = []
+  snapshot.forEach((snap) => {
+    list.push({ id: snap.key, ...snap.val() })
+  })
+  return list
+}
+
+/** Subscribe with onValue (target may be a ref or a function returning one); a no-op unsubscribe if setup throws. */
+const safeSubscribe = (target, handler) => {
+  try {
+    return onValue(typeof target === "function" ? target() : target, handler)
+  } catch (error) {
+    console.log(error)
+    return () => {}
+  }
+}
+
+/**
+ * Check the signed-in user. Resolves to { user, profile } or { error } where
+ * `error` is a ready-to-return failure result.
+ */
+const requireUser = async ({ role, notFound = "User profile not found.", wrongRole, checkDisabled = false } = {}) => {
+  const user = auth.currentUser
+  if (!user) return { error: fail("Sign in to continue.") }
+  const snap = await getProfile(user.uid)
+  if (!snap.exists()) return { error: fail(notFound) }
+  const profile = snap.val()
+  if (role && profile?.role !== role) return { error: fail(wrongRole) }
+  if (checkDisabled && profile?.disabled === true) return { error: fail("This account is disabled.") }
+  return { user, profile }
+}
+
+// ---------------------------------------------------------------------------
 // Zod validation schemas
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Discounts and refunds — validated against the same maths the UI shows, so a
+// Discounts and refunds are validated against the same maths the UI shows, so a
 // tampered client cannot persist numbers the calculator would never produce.
 // ---------------------------------------------------------------------------
 
@@ -168,33 +214,20 @@ export const userSchema = z.object({
 export const addMenuItem = async (itemData) => {
   try {
     const validation = menuItemSchema.safeParse(itemData)
-    if (!validation.success) {
-      return {
-        success: false,
-        message: validation.error.issues[0]?.message || "Invalid menu item data",
-      }
-    }
+    if (!validation.success) return fail(validation.error.issues[0]?.message || "Invalid menu item data")
 
     const existing = await getMenuItemsOnce()
     const clashes = findConflictingMenuItems(existing, validation.data.name, validation.data.category)
     if (clashes.length > 0) {
-      return {
-        success: false,
-        message: `A ${validation.data.category} product named "${validation.data.name}" already exists. Edit or rename it instead of adding a second one.`,
-      }
+      return fail(
+        `A ${validation.data.category} product named "${validation.data.name}" already exists. Edit or rename it instead of adding a second one.`
+      )
     }
 
     const newItemRef = push(menuRef, validation.data)
-    return {
-      success: true,
-      message: "Menu item added successfully",
-      data: { id: newItemRef.key, ...validation.data },
-    }
+    return ok("Menu item added successfully", { id: newItemRef.key, ...validation.data })
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -206,18 +239,8 @@ export const addMenuItem = async (itemData) => {
  * the priority-index traversal behind `forEach` can return a truncated child list, which
  * would silently hide products from the menu and from duplicate review.
  */
-export const getMenuItems = (callback) => {
-  try {
-    const unsubscribe = onValue(menuRef, (snapshot) => {
-      const raw = (snapshot.val() ?? {})
-      callback(Object.entries(raw).map(([id, value]) => ({ id, ...value })))
-    })
-    return unsubscribe
-  } catch (error) {
-    console.log(error)
-    return () => {}
-  }
-}
+export const getMenuItems = (callback) =>
+  safeSubscribe(menuRef, (snapshot) => callback(valToList(snapshot.val())))
 
 /**
  * Get all menu items once (get)
@@ -229,21 +252,14 @@ export const getMenuItems = (callback) => {
  */
 export const getMenuItemsOnce = async () => {
   const snapshot = await get(menuRef)
-  const raw = (snapshot.val() ?? {})
-  return Object.entries(raw).map(([id, value]) => ({ id, ...value }))
+  return valToList(snapshot.val())
 }
 
 /**
  * Query menu item by name (simple query)
  */
 export const getMenuItemByName = async (name) => {
-  const itemQuery = query(
-    menuRef,
-    orderByChild("name"),
-    equalTo(name),
-    limitToFirst(1)
-  )
-  const snapshot = await get(itemQuery)
+  const snapshot = await get(query(menuRef, orderByChild("name"), equalTo(name), limitToFirst(1)))
   return snapshot.exists()
 }
 
@@ -251,19 +267,8 @@ export const getMenuItemByName = async (name) => {
  * Query menu items by category
  */
 export const getMenuItemsByCategory = async (category) => {
-  const categoryQuery = query(
-    menuRef,
-    orderByChild("category"),
-    equalTo(category)
-  )
-  const snapshot = await get(categoryQuery)
-  const itemsArray = []
-  snapshot.forEach((snap) => {
-    const itemData = snap.val()
-    const id = snap.key
-    itemsArray.push({ id, ...itemData })
-  })
-  return itemsArray
+  const snapshot = await get(query(menuRef, orderByChild("category"), equalTo(category)))
+  return snapshotToList(snapshot)
 }
 
 /**
@@ -275,31 +280,19 @@ export const getMenuItemsByCategory = async (category) => {
  */
 export const updateMenuItem = async (id, itemData) => {
   try {
-    const name = itemData.name
-    const category = itemData.category
+    const { name, category } = itemData
     if (name !== undefined && category !== undefined) {
       const existing = await getMenuItemsOnce()
       const clashes = findConflictingMenuItems(existing, name, category, id)
       if (clashes.length > 0) {
-        return {
-          success: false,
-          message: `A ${category} product named "${name}" already exists. Pick a different name or edit that item instead.`,
-        }
+        return fail(`A ${category} product named "${name}" already exists. Pick a different name or edit that item instead.`)
       }
     }
 
-    const updateReference = ref(database, `menu/${id}`)
-    await update(updateReference, itemData)
-    return {
-      success: true,
-      message: "Menu item updated successfully",
-      data: { id, ...itemData },
-    }
+    await update(refAt(`menu/${id}`), itemData)
+    return ok("Menu item updated successfully", { id, ...itemData })
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -308,17 +301,10 @@ export const updateMenuItem = async (id, itemData) => {
  */
 export const deleteMenuItem = async (id) => {
   try {
-    const deleteReference = ref(database, `menu/${id}`)
-    await remove(deleteReference)
-    return {
-      success: true,
-      message: "Menu item deleted successfully",
-    }
+    await remove(refAt(`menu/${id}`))
+    return ok("Menu item deleted successfully")
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -327,18 +313,11 @@ export const deleteMenuItem = async (id) => {
  */
 export const toggleAvailability = async (id, currentAvailability) => {
   try {
-    const updateReference = ref(database, `menu/${id}/available`)
     // `set`, not `update`: Firebase v9+ requires an object for update().
-    await set(updateReference, !currentAvailability)
-    return {
-      success: true,
-      message: `Item ${!currentAvailability ? "available" : "sold out"}`,
-    }
+    await set(refAt(`menu/${id}/available`), !currentAvailability)
+    return ok(`Item ${!currentAvailability ? "available" : "sold out"}`)
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -359,31 +338,19 @@ export const toggleAvailability = async (id, currentAvailability) => {
 export const placeOrder = async (orderData) => {
   try {
     const validation = orderSchema.safeParse(orderData)
-    if (!validation.success) {
-      return {
-        success: false,
-        message: validation.error.issues[0]?.message || "Invalid order data",
-      }
-    }
+    if (!validation.success) return fail(validation.error.issues[0]?.message || "Invalid order data")
 
     // displayId is generated locally so customers never need
     // read/write access to a shared counter node.
     const displayId = makeDisplayId()
-    const orderRef = push(ref(database, `orders/${validation.data.customerId}`), {
+    const orderRef = push(refAt(`orders/${validation.data.customerId}`), {
       ...validation.data,
       displayId,
     })
 
-    return {
-      success: true,
-      message: "Order placed successfully",
-      data: { id: orderRef.key, displayId, ...validation.data },
-    }
+    return ok("Order placed successfully", { id: orderRef.key, displayId, ...validation.data })
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -396,22 +363,17 @@ export const placeOrder = async (orderData) => {
  * pages need no special casing.
  */
 function flattenOrders(value, depth) {
-  const out = []
-  if (!value) return out
+  if (!value) return []
+  if (depth === "flat") return valToList(value)
 
-  if (depth === "flat") {
-    Object.entries(value).forEach(([id, order]) => out.push({ id, ...order }))
-    return out
-  }
-
-  Object.entries(value).forEach(([customerId, orders]) => {
-    if (!orders) return
-    Object.entries(orders).forEach(([id, order]) =>
-      out.push({ id, customerId, ...order })
-    )
-  })
-  return out
+  return Object.entries(value).flatMap(([customerId, orders]) =>
+    Object.entries(orders ?? {}).map(([id, order]) => ({ id, customerId, ...order }))
+  )
 }
+
+/** Pick the orders node to read: one customer's, or the whole admin feed. */
+const ordersTarget = (customerId) => (customerId ? refAt(`orders/${customerId}`) : ordersRef)
+const flattenFor = (customerId, value) => flattenOrders(value, customerId ? "flat" : "byCustomer")
 
 /**
  * Get orders in real-time (onValue)
@@ -421,36 +383,22 @@ function flattenOrders(value, depth) {
  *
  * Returns an unsubscribe function.
  */
-export const getOrders = (callback, customerId) => {
-  try {
-    const scoped = !!customerId
-    const target = scoped ? ref(database, `orders/${customerId}`) : ordersRef
-
-    const unsubscribe = onValue(target, (snapshot) => {
-      callback(flattenOrders(snapshot.val(), scoped ? "flat" : "byCustomer"))
-    })
-    return unsubscribe
-  } catch (error) {
-    console.log(error)
-    return () => {}
-  }
-}
+export const getOrders = (callback, customerId) =>
+  safeSubscribe(() => ordersTarget(customerId), (snapshot) => callback(flattenFor(customerId, snapshot.val())))
 
 /**
  * Get orders once (get) — mirrors `getOrders` scoping rules.
  */
 export const getOrdersOnce = async (customerId) => {
-  const scoped = !!customerId
-  const target = scoped ? ref(database, `orders/${customerId}`) : ordersRef
-  const snapshot = await get(target)
-  return flattenOrders(snapshot.val(), scoped ? "flat" : "byCustomer")
+  const snapshot = await get(ordersTarget(customerId))
+  return flattenFor(customerId, snapshot.val())
 }
 
 /**
  * Get orders by customer ID
  */
 export const getOrdersByCustomer = async (customerId) => {
-  const snapshot = await get(ref(database, `orders/${customerId}`))
+  const snapshot = await get(refAt(`orders/${customerId}`))
   return flattenOrders(snapshot.val(), "flat")
 }
 
@@ -472,18 +420,11 @@ export const getOrdersByStatus = async (status) => {
  */
 export const updateOrderStatus = async (customerId, id, status) => {
   try {
-    const updateReference = ref(database, `orders/${customerId}/${id}/status`)
     // `set`, not `update`: Firebase v9+ requires an object for update().
-    await set(updateReference, status)
-    return {
-      success: true,
-      message: `Order ${id} status updated to ${status}`,
-    }
+    await set(refAt(`orders/${customerId}/${id}/status`), status)
+    return ok(`Order ${id} status updated to ${status}`)
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -492,17 +433,15 @@ export const updateOrderStatus = async (customerId, id, status) => {
  */
 export const requestVoid = async (orderId, reason) => {
   try {
-    const user = auth.currentUser
-    if (!user) return { success: false, message: "Sign in to continue." }
-    const profileSnap = await get(ref(database, `users/${user.uid}`))
-    if (!profileSnap.exists()) return { success: false, message: "User profile not found." }
-    const profile = profileSnap.val()
-    if (profile?.role !== "cashier") return { success: false, message: "Only a cashier can request a void." }
-    if (profile?.disabled === true) return { success: false, message: "This account is disabled." }
+    const { user, error } = await requireUser({
+      role: "cashier",
+      wrongRole: "Only a cashier can request a void.",
+      checkDisabled: true,
+    })
+    if (error) return error
 
-    const orderRef = ref(database, `orders/${user.uid}/${orderId}`)
     const result = await runTransaction(
-      orderRef,
+      refAt(`orders/${user.uid}/${orderId}`),
       (current) => {
         if (!current) return current
         const status = String(current.status ?? "")
@@ -516,10 +455,10 @@ export const requestVoid = async (orderId, reason) => {
       },
       { applyLocally: false }
     )
-    if (!result.committed) return { success: false, message: "Could not apply void request. Try again." }
-    return { success: true, message: "Void request submitted.", data: { status: "pending_void", previousStatus: result.snapshot?.val()?.previousStatus } }
+    if (!result.committed) return fail("Could not apply void request. Try again.")
+    return ok("Void request submitted.", { status: "pending_void", previousStatus: result.snapshot?.val()?.previousStatus })
   } catch (e) {
-    return { success: false, message: e?.message || "Could not request void." }
+    return failWith(e, "Could not request void.")
   }
 }
 
@@ -529,14 +468,15 @@ export const requestVoid = async (orderId, reason) => {
  */
 export const approveVoid = async (customerId, orderId, decision) => {
   try {
-    const user = auth.currentUser
-    if (!user) return { success: false, message: "Sign in to continue." }
-    const profileSnap = await get(ref(database, `users/${user.uid}`))
-    if (!profileSnap.exists() || profileSnap.val()?.role !== "admin") return { success: false, message: "Only an admin can approve/decline voids." }
+    const { error } = await requireUser({
+      role: "admin",
+      notFound: "Only an admin can approve/decline voids.",
+      wrongRole: "Only an admin can approve/decline voids.",
+    })
+    if (error) return error
 
-    const orderRef = ref(database, `orders/${customerId}/${orderId}`)
     const result = await runTransaction(
-      orderRef,
+      refAt(`orders/${customerId}/${orderId}`),
       (current) => {
         if (!current) return current
         const status = String(current.status ?? "")
@@ -556,10 +496,10 @@ export const approveVoid = async (customerId, orderId, decision) => {
       },
       { applyLocally: false }
     )
-    if (!result.committed) return { success: false, message: "Could not apply decision. Try again." }
-    return { success: true, message: "Void decision applied.", data: { status: result.snapshot?.val()?.status } }
+    if (!result.committed) return fail("Could not apply decision. Try again.")
+    return ok("Void decision applied.", { status: result.snapshot?.val()?.status })
   } catch (e) {
-    return { success: false, message: e?.message || "Could not apply decision." }
+    return failWith(e, "Could not apply decision.")
   }
 }
 
@@ -568,17 +508,10 @@ export const approveVoid = async (customerId, orderId, decision) => {
  */
 export const deleteOrder = async (customerId, id) => {
   try {
-    const deleteReference = ref(database, `orders/${customerId}/${id}`)
-    await remove(deleteReference)
-    return {
-      success: true,
-      message: "Order deleted successfully",
-    }
+    await remove(refAt(`orders/${customerId}/${id}`))
+    return ok("Order deleted successfully")
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -591,18 +524,14 @@ export const deleteOrder = async (customerId, id) => {
  */
 export const loginUser = async (email, password) => {
   try {
-    if (!email.trim() || !password) {
-      return { success: false, message: "Email and password are required" }
-    }
+    if (!email.trim() || !password) return fail("Email and password are required")
 
     const cred = await signInWithEmailAndPassword(auth, email, password)
     const uid = cred.user.uid
 
     // Fetch user profile from RTDB
-    const profileSnap = await get(ref(database, `users/${uid}`))
-    if (!profileSnap.exists()) {
-      return { success: false, message: "User profile not found" }
-    }
+    const profileSnap = await getProfile(uid)
+    if (!profileSnap.exists()) return fail("User profile not found")
 
     const userData = profileSnap.val()
 
@@ -611,10 +540,7 @@ export const loginUser = async (email, password) => {
     // is only refreshed on a new token, so the database flag is the reliable check.
     if (userData.disabled === true) {
       await signOut(auth)
-      return {
-        success: false,
-        message: "This account has been disabled. Ask the Owner/Manager to re-enable it.",
-      }
+      return fail("This account has been disabled. Ask the Owner/Manager to re-enable it.")
     }
 
     // Reject a profile whose role is missing or unrecognised. Without this, a
@@ -622,22 +548,12 @@ export const loginUser = async (email, password) => {
     // treat a broken record as a cashier.
     if (userData.role !== "admin" && userData.role !== "cashier") {
       await signOut(auth)
-      return {
-        success: false,
-        message: "Your account role is not set correctly. Ask the Owner/Manager to fix it.",
-      }
+      return fail("Your account role is not set correctly. Ask the Owner/Manager to fix it.")
     }
 
-    return {
-      success: true,
-      message: "Login successful",
-      data: { id: uid, ...userData },
-    }
+    return ok("Login successful", { id: uid, ...userData })
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -646,15 +562,9 @@ export const loginUser = async (email, password) => {
  */
 export const registerUser = async (name, email, password) => {
   try {
-    if (!name.trim()) {
-      return { success: false, message: "Name is required" }
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      return { success: false, message: "Enter a valid email address" }
-    }
-    if (password.length < 8) {
-      return { success: false, message: "Password must be at least 8 characters" }
-    }
+    if (!name.trim()) return fail("Name is required")
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return fail("Enter a valid email address")
+    if (password.length < 8) return fail("Password must be at least 8 characters")
 
     // Create Firebase Auth user
     const cred = await createUserWithEmailAndPassword(auth, email, password)
@@ -667,21 +577,12 @@ export const registerUser = async (name, email, password) => {
       role: "cashier",
       createdAt: new Date().toISOString(),
     }
-    await set(ref(database, `users/${uid}`), profile)
+    await set(profileRef(uid), profile)
 
-    return {
-      success: true,
-      message: "Account created successfully",
-      data: { id: uid, ...profile },
-    }
+    return ok("Account created successfully", { id: uid, ...profile })
   } catch (error) {
-    if (error.code === "auth/email-already-in-use") {
-      return { success: false, message: "An account with this email already exists" }
-    }
-    return {
-      success: false,
-      message: error.message,
-    }
+    if (error.code === "auth/email-already-in-use") return fail("An account with this email already exists")
+    return failWith(error)
   }
 }
 
@@ -691,12 +592,9 @@ export const registerUser = async (name, email, password) => {
 export const logoutUser = async () => {
   try {
     await signOut(auth)
-    return { success: true, message: "Logged out successfully" }
+    return ok("Logged out successfully")
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -704,21 +602,13 @@ export const logoutUser = async () => {
  * Subscribe to auth state changes
  * Returns an unsubscribe function.
  */
-export const onAuthChange = (callback) => {
-  return onAuthStateChanged(auth, async (firebaseUser) => {
-    if (firebaseUser) {
-      const uid = firebaseUser.uid
-      const profileSnap = await get(ref(database, `users/${uid}`))
-      if (profileSnap.exists()) {
-        callback({ id: uid, ...profileSnap.val() })
-      } else {
-        callback(null)
-      }
-    } else {
-      callback(null)
-    }
+export const onAuthChange = (callback) =>
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    if (!firebaseUser) return callback(null)
+    const uid = firebaseUser.uid
+    const profileSnap = await getProfile(uid)
+    callback(profileSnap.exists() ? { id: uid, ...profileSnap.val() } : null)
   })
-}
 
 // ===========================================================================
 // USER MANAGEMENT (Admin)
@@ -728,50 +618,24 @@ export const onAuthChange = (callback) => {
  * Get all users in real-time (onValue)
  * Returns an unsubscribe function.
  */
-export const getUsers = (callback) => {
-  try {
-    const unsubscribe = onValue(usersRef, (snapshot) => {
-      const usersArray = []
-      snapshot.forEach((snap) => {
-        const userData = snap.val()
-        const id = snap.key
-        const userWithId = { id, ...userData }
-        usersArray.push(userWithId)
-      })
-      callback(usersArray)
-    })
-    return unsubscribe
-  } catch (error) {
-    console.log(error)
-    return () => {}
-  }
-}
+export const getUsers = (callback) =>
+  safeSubscribe(usersRef, (snapshot) => callback(snapshotToList(snapshot)))
 
 /**
  * Subscribe to a single user profile in real time.
  * Used to honour the `disabled` flag on active sessions.
  */
-export const subscribeUserProfile = (uid, callback) => {
-  const r = ref(database, `users/${uid}`)
-  const unsubscribe = onValue(r, (snapshot) => {
+export const subscribeUserProfile = (uid, callback) =>
+  onValue(profileRef(uid), (snapshot) => {
     callback(snapshot.exists() ? { id: uid, ...snapshot.val() } : null)
   })
-  return unsubscribe
-}
 
 /**
  * Get all users once (get)
  */
 export const getUsersOnce = async () => {
   const snapshot = await get(usersRef)
-  const usersArray = []
-  snapshot.forEach((snap) => {
-    const userData = snap.val()
-    const id = snap.key
-    const userWithId = { id, ...userData }
-    usersArray.push(userWithId)
-  })
-  return usersArray
+  return snapshotToList(snapshot)
 }
 
 /**
@@ -779,18 +643,10 @@ export const getUsersOnce = async () => {
  */
 export const updateUser = async (id, userData) => {
   try {
-    const updateReference = ref(database, `users/${id}`)
-    await update(updateReference, userData)
-    return {
-      success: true,
-      message: "User updated successfully",
-      data: { id, ...userData },
-    }
+    await update(profileRef(id), userData)
+    return ok("User updated successfully", { id, ...userData })
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -804,17 +660,10 @@ export const updateUser = async (id, userData) => {
  */
 export const deleteUser = async (id) => {
   try {
-    const deleteReference = ref(database, `users/${id}`)
-    await remove(deleteReference)
-    return {
-      success: true,
-      message: "User deleted successfully",
-    }
+    await remove(profileRef(id))
+    return ok("User deleted successfully")
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }
 
@@ -828,31 +677,30 @@ export const deleteUser = async (id) => {
  */
 export const setCashierEnabled = async (uid, enabled) => {
   try {
-    const actor = auth.currentUser
-    if (!actor) return { success: false, message: "Sign in to continue." }
-    if (actor.uid === uid) return { success: false, message: "You cannot disable your own account." }
+    // Self-check runs before any profile lookup, as before.
+    if (auth.currentUser?.uid === uid) return fail("You cannot disable your own account.")
 
-    const actorSnap = await get(ref(database, `users/${actor.uid}`))
-    if (!actorSnap.exists() || actorSnap.val()?.role !== "admin") {
-      return { success: false, message: "Only an Owner/Manager can perform this action." }
-    }
-    if (actorSnap.val()?.disabled === true) {
-      return { success: false, message: "This account is disabled." }
-    }
+    const { error } = await requireUser({
+      role: "admin",
+      notFound: "Only an Owner/Manager can perform this action.",
+      wrongRole: "Only an Owner/Manager can perform this action.",
+      checkDisabled: true,
+    })
+    if (error) return error
 
-    const targetSnap = await get(ref(database, `users/${uid}`))
-    if (!targetSnap.exists()) return { success: false, message: "That account no longer exists." }
+    const targetSnap = await getProfile(uid)
+    if (!targetSnap.exists()) return fail("That account no longer exists.")
     if (targetSnap.val()?.role === "admin") {
-      return { success: false, message: "This account is an Owner/Manager. Use a dedicated administrator flow for those." }
+      return fail("This account is an Owner/Manager. Use a dedicated administrator flow for those.")
     }
 
-    await update(ref(database, `users/${uid}`), {
+    await update(profileRef(uid), {
       disabled: enabled,
       reenabledAt: enabled ? new Date().toISOString() : null,
     })
-    return { success: true, message: enabled ? "Account re-enabled" : "Account disabled" }
+    return ok(enabled ? "Account re-enabled" : "Account disabled")
   } catch (error) {
-    return { success: false, message: error?.message || "Could not update the account." }
+    return failWith(error, "Could not update the account.")
   }
 }
 
@@ -865,11 +713,10 @@ export const setCashierEnabled = async (uid, enabled) => {
  * Authentication user, then create the matching `/users/<uid>` profile with
  * `role: "cashier"`. See `MANUAL_SETUP_AND_DEPLOYMENT.md`.
  */
-export const createCashierAccount = async (_name, _email, _password) => ({
-  success: false,
-  message:
-    "Automatic cashier creation is disabled. Ask the cashier to register at /register, or create the account manually in the Firebase Console.",
-})
+export const createCashierAccount = async (_name, _email, _password) =>
+  fail(
+    "Automatic cashier creation is disabled. Ask the cashier to register at /register, or create the account manually in the Firebase Console."
+  )
 
 /**
  * Locate the (customerId, order) pair for an order id. Admins can read the whole
@@ -877,16 +724,12 @@ export const createCashierAccount = async (_name, _email, _password) => ({
  */
 async function locateOrder(orderId, customerId) {
   if (customerId) {
-    const snap = await get(ref(database, `orders/${customerId}/${orderId}`))
-    if (snap.exists()) return { customerId }
-    return null
+    const snap = await get(refAt(`orders/${customerId}/${orderId}`))
+    return snap.exists() ? { customerId } : null
   }
-  const snap = await get(ref(database, "orders"))
-  const byCustomer = (snap.val() ?? {})
-  for (const [cid, bucket] of Object.entries(byCustomer)) {
-    if (bucket && bucket[orderId]) return { customerId: cid }
-  }
-  return null
+  const snap = await get(ordersRef)
+  const match = Object.entries(snap.val() ?? {}).find(([, bucket]) => bucket && bucket[orderId])
+  return match ? { customerId: match[0] } : null
 }
 
 /**
@@ -899,39 +742,27 @@ async function locateOrder(orderId, customerId) {
  *
  * Success is reported only after Firebase acknowledges the write.
  */
-export const refundOrder = async (
-  orderId,
-  amount,
-  reason,
-  customerId
-) => {
+export const refundOrder = async (orderId, amount, reason, customerId) => {
   try {
-    if (!orderId?.trim()) return { success: false, message: "Order id is required." }
-    if (!reason || reason.trim().length < 3) {
-      return { success: false, message: "A refund reason of at least 3 characters is required." }
-    }
+    if (!orderId?.trim()) return fail("Order id is required.")
+    if (!reason || reason.trim().length < 3) return fail("A refund reason of at least 3 characters is required.")
     const requested = Math.round(Number(amount) * 100) / 100
-    if (!Number.isFinite(requested) || requested <= 0) {
-      return { success: false, message: "Refund amount must be greater than zero." }
-    }
+    if (!Number.isFinite(requested) || requested <= 0) return fail("Refund amount must be greater than zero.")
 
-    const user = auth.currentUser
-    if (!user) return { success: false, message: "Sign in to continue." }
-
-    const profileSnap = await get(ref(database, `users/${user.uid}`))
-    if (!profileSnap.exists()) return { success: false, message: "No user profile found for this session." }
-    const profile = profileSnap.val()
-    if (profile?.role !== "admin") return { success: false, message: "Only an Owner/Manager can perform this action." }
-    if (profile?.disabled === true) return { success: false, message: "This account is disabled." }
+    const { user, profile, error } = await requireUser({
+      role: "admin",
+      notFound: "No user profile found for this session.",
+      wrongRole: "Only an Owner/Manager can perform this action.",
+      checkDisabled: true,
+    })
+    if (error) return error
 
     const located = await locateOrder(orderId, customerId)
-    if (!located) return { success: false, message: "Order not found." }
-    const { customerId: cid } = located
-    const orderRef = ref(database, `orders/${cid}/${orderId}`)
+    if (!located) return fail("Order not found.")
 
     const approvedBy = { uid: user.uid, name: String(profile?.name ?? "") }
     const result = await runTransaction(
-      orderRef,
+      refAt(`orders/${located.customerId}/${orderId}`),
       (current) => {
         if (!current) return current
         const updated = applyRefund(current, { amount: requested, reason }, approvedBy)
@@ -940,12 +771,10 @@ export const refundOrder = async (
       { applyLocally: false }
     )
 
-    if (!result.committed) {
-      return { success: false, message: "Refund could not be applied. Please try again." }
-    }
-    return { success: true, message: "Refund recorded", data: { orderId, amount: requested } }
+    if (!result.committed) return fail("Refund could not be applied. Please try again.")
+    return ok("Refund recorded", { orderId, amount: requested })
   } catch (error) {
-    return { success: false, message: error?.message || "Refund failed." }
+    return failWith(error, "Refund failed.")
   }
 }
 
@@ -977,11 +806,8 @@ export const resetDemoData = async () => {
     // Reset orders
     await set(ordersRef, null)
 
-    return { success: true, message: "Demo data reset successfully" }
+    return ok("Demo data reset successfully")
   } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    }
+    return failWith(error)
   }
 }

@@ -8,10 +8,6 @@ import { toast } from "sonner"
 import { computeDiscount } from "@/lib/discounts"
 import { sortByCreatedAtDesc } from "@/lib/stats"
 import {
-  requestVoid as requestVoidAction,
-  approveVoid as approveVoidAction,
-} from "@/lib/actions"
-import {
   getMenuItems,
   getOrders,
   getUsers,
@@ -30,6 +26,8 @@ import {
   refundOrder as refundOrderAction,
   setCashierEnabled as setCashierEnabledAction,
   createCashierAccount as createCashierAction,
+  requestVoid as requestVoidAction,
+  approveVoid as approveVoidAction,
 } from "@/lib/actions"
 
 export const MAX_QTY = 99
@@ -109,25 +107,19 @@ export function StoreProvider({ children }) {
    */
   const sortedOrders = useMemo(() => sortByCreatedAtDesc(orders), [orders])
 
-  const login = async (email, password) => {
-    const result = await loginUser(email, password)
+  /** Run an auth action and, on success, make its user the current one. */
+  const authenticate = async (action) => {
+    const result = await action()
     if (result.success && result.data) {
-      const user = { ...result.data, role: result.data.role }
+      const user = { ...result.data }
       setCurrentUser(user)
       return { ok: true, user }
     }
     return { ok: false, error: result.message }
   }
 
-  const register = async (name, email, password) => {
-    const result = await registerUser(name, email, password)
-    if (result.success && result.data) {
-      const user = { ...result.data, role: result.data.role }
-      setCurrentUser(user)
-      return { ok: true, user }
-    }
-    return { ok: false, error: result.message }
-  }
+  const login = (email, password) => authenticate(() => loginUser(email, password))
+  const register = (name, email, password) => authenticate(() => registerUser(name, email, password))
 
   const logout = async () => {
     await logoutUser()
@@ -156,10 +148,9 @@ export function StoreProvider({ children }) {
       const item = menu.find((m) => m.id === id)
       if (!item || !item.available) return prev
       const existing = prev.find((l) => l.menuItemId === id)
-      const newCart = existing
+      return existing
         ? prev.map((l) => (l.menuItemId === id ? { ...l, qty: Math.min(l.qty + 1, MAX_QTY) } : l))
         : [...prev, { menuItemId: id, qty: 1 }]
-      return newCart
     })
 
   const setQty = (id, qty) =>
@@ -186,19 +177,19 @@ export function StoreProvider({ children }) {
   /** Round to 2 decimals so peso maths never drifts on floats (0.1 + 0.2). */
   const money = (n) => Math.round(n * 100) / 100
 
-  const placeOrder = async (
-    cashTendered,
-    note,
-    discountType = "none"
-  ) => {
+  /** Discount breakdown for the current cart. */
+  const previewDiscount = (type) =>
+    computeDiscount(
+      cartLines.map((l) => ({ category: l.item.category, qty: l.qty, price: l.item.price })),
+      type
+    )
+
+  const placeOrder = async (cashTendered, note, discountType = "none") => {
     if (!currentUser || cartLines.length === 0) return null
 
     // The discount is recomputed from the cart here rather than accepted from the
     // caller, so the persisted total always matches the line items.
-    const breakdown = computeDiscount(
-      cartLines.map((l) => ({ category: l.item.category, qty: l.qty, price: l.item.price })),
-      discountType
-    )
+    const breakdown = previewDiscount(discountType)
     const tendered = money(cashTendered)
     const changeGiven = money(tendered - breakdown.total)
 
@@ -256,52 +247,29 @@ export function StoreProvider({ children }) {
     return addMenuItemAction(input)
   }
 
-  const deleteMenuItem = async (id) => {
-    return deleteMenuItemAction(id)
-  }
-
   const toggleAvailability = async (id) => {
     const item = menu.find((m) => m.id === id)
     if (!item) return { success: false, message: "Item not found" }
     return toggleAvailabilityAction(id, item.available)
   }
 
-  const previewDiscount = (type) =>
-    computeDiscount(
-      cartLines.map((l) => ({ category: l.item.category, qty: l.qty, price: l.item.price })),
-      type
-    )
-
-  const refundOrder = async (orderId, amount, reason, customerId) =>
-    refundOrderAction(orderId, amount, reason, customerId)
 
   // Void workflow. These go through Cloud Functions, never the RTDB SDK: the rules
   // refuse client writes to the void fields. Each resolves to { success, message }
   // like the other store actions. The orders listener delivers the new state, so
   // nothing is patched locally.
-  const requestVoid = async (orderId, reason) => {
-    const res = await requestVoidAction(orderId, reason)
-    return res.success ? { success: true, message: res.message || "Void request submitted." } : { success: false, message: res.message || "Failed" }
-  }
+  const voidResult = (res, okMessage) =>
+    res.success
+      ? { success: true, message: res.message || okMessage }
+      : { success: false, message: res.message || "Failed" }
 
-  const approveVoid = async (order, decision) => {
-    const customerId = order.customerId || (currentUser?.id === order.customerId ? order.customerId : null)
-    const orderId = order.id
-    const res = await approveVoidAction(customerId, orderId, decision)
-    return res.success ? { success: true, message: res.message || "Void decision applied." } : { success: false, message: res.message || "Failed" }
-  }
+  const requestVoid = async (orderId, reason) =>
+    voidResult(await requestVoidAction(orderId, reason), "Void request submitted.")
 
-  const declineVoid = async (order) => approveVoid(order, "declined")
+  const approveVoid = async (order, decision) =>
+    voidResult(await approveVoidAction(order.customerId || null, order.id, decision), "Void decision applied.")
 
-  const setCashierEnabled = async (uid, enabled) =>
-    setCashierEnabledAction(uid, enabled)
-
-  const createCashier = async (name, email, password) =>
-    createCashierAction(name, email, password)
-
-  const resetDemoData = async () => {
-    return resetDemoDataAction()
-  }
+  const declineVoid = (order) => approveVoid(order, "declined")
 
   const value = {
     currentUser,
@@ -323,17 +291,17 @@ export function StoreProvider({ children }) {
     reorder,
     placeOrder,
     previewDiscount,
-    refundOrder,
+    refundOrder: refundOrderAction,
     requestVoid,
     approveVoid,
     declineVoid,
-    setCashierEnabled,
-    createCashier,
+    setCashierEnabled: setCashierEnabledAction,
+    createCashier: createCashierAction,
     updateOrderStatus,
     saveMenuItem,
-    deleteMenuItem,
+    deleteMenuItem: deleteMenuItemAction,
     toggleAvailability,
-    resetDemoData,
+    resetDemoData: resetDemoDataAction,
   }
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
