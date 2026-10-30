@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Search, Undo2, Receipt, Check, X } from "lucide-react"
+import { Search, Receipt, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -7,14 +7,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/StatusBadge"
-import { RefundDialog } from "@/components/RefundDialog"
 import { ReceiptDialog } from "@/components/ReceiptDialog"
 import { VoidDecisionDialog } from "@/components/VoidDecisionDialog"
 import { VoidAudit, VoidRequestInfo } from "@/components/VoidAudit"
 import { isPendingVoid } from "@/lib/voids"
 import { useStore } from "@/store/AppStore"
 import { formatDateTime, orderNo, peso } from "@/lib/format"
-import { remainingRefundable } from "@/lib/finance"
 import { cn } from "@/lib/utils"
 const NEXT = {
   pending: { status: "preparing", label: "Start preparing" },
@@ -33,7 +31,6 @@ export default function AdminOrders() {
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState(null)
-  const [refundOpen, setRefundOpen] = useState(false)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [visible, setVisible] = useState(CAP)
   // { id, mode: "approve" | "decline" } while a decision dialog is open.
@@ -64,7 +61,8 @@ export default function AdminOrders() {
   const deciding = decision ? orders.find((o) => o.id === decision.id) ?? null : null
 
   async function advance(id, status, name) {
-    await updateOrderStatus(id, status)
+    const res = await updateOrderStatus(id, status)
+    if (res && res.success === false) return
     const order = orders.find((o) => o.id === id)
     toast.success(`${order ? orderNo(order) : id} · ${name}`)
   }
@@ -197,27 +195,6 @@ export default function AdminOrders() {
 
               {selected.status === "pending_void" && <VoidAudit order={selected} />}
 
-              {Object.values(selected.refunds ?? {}).length > 0 && (
-                <div className="space-y-1.5 rounded-lg border border-destructive/30 p-2.5 text-sm">
-                  <p className="font-semibold text-destructive">Refunds</p>
-                  {Object.values(selected.refunds).map((r) => (
-                    <div key={r.id} className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate">{r.reason}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateTime(r.createdAt)} · {r.approvedByName ?? "Owner/Manager"}
-                        </span>
-                      </span>
-                      <span className="shrink-0 font-semibold tabular-nums">−{peso(r.amount)}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between border-t pt-1">
-                    <span className="font-semibold">Refundable now</span>
-                    <span className="font-semibold tabular-nums">{peso(remainingRefundable(selected))}</span>
-                  </div>
-                </div>
-              )}
-
               <DialogFooter>
                 <Button variant="outline" onClick={() => setReceiptOpen(true)}>
                   <Receipt /> Receipt
@@ -227,11 +204,6 @@ export default function AdminOrders() {
                     <Button variant="outline" onClick={() => setDecision({ id: selected.id, mode: "decline" })}><X /> Decline Void</Button>
                     <Button variant="destructive" onClick={() => setDecision({ id: selected.id, mode: "approve" })}><Check /> Approve Void</Button>
                   </>
-                )}
-                {selected.status !== "cancelled" && selected.status !== "pending_void" && remainingRefundable(selected) > 0.004 && (
-                  <Button variant="outline" onClick={() => setRefundOpen(true)}>
-                    <Undo2 /> Refund
-                  </Button>
                 )}
                 {(selected.status === "pending" || selected.status === "preparing") && (
                   <Button variant="destructive" onClick={() => { if (confirm(`Cancel ${orderNo(selected)}? This can't be undone.`)) { updateOrderStatus(selected.id, "cancelled"); toast.success(`${orderNo(selected)} cancelled`) } }}>
@@ -246,7 +218,6 @@ export default function AdminOrders() {
       </Dialog>
 
       <VoidDecisionDialog order={deciding} mode={decision?.mode} open={!!deciding && isPendingVoid(deciding)} onOpenChange={(v) => !v && setDecision(null)} />
-      <RefundDialog order={selected} open={refundOpen} onOpenChange={setRefundOpen} />
       <ReceiptDialog order={selected} open={receiptOpen} onOpenChange={setReceiptOpen} />
     </div>
   )

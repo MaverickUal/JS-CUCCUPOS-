@@ -70,50 +70,6 @@ describe("buildReceipt", () => {
     expect(r.discountAmount).toBe(0)
   })
 
-  it("survives an order with no refund history", () => {
-    const r = buildReceipt(base())
-    expect(r.refunds).toEqual([])
-    expect(r.refundedTotal).toBe(0)
-    expect(r.remainingRefundable).toBe(244)
-  })
-
-  it("includes refund history oldest-first with the remaining balance", () => {
-    const r = buildReceipt(
-      base({
-        refunds: {
-          r2: {
-            id: "r2", orderId: "-Nabc123", amount: 44, reason: "Wrong drink",
-            status: "completed", createdAt: "2026-03-06T10:00:00.000Z",
-            approvedBy: "admin-1", approvedByName: "Owner",
-          },
-          r1: {
-            id: "r1", orderId: "-Nabc123", amount: 100, reason: "Spilled",
-            status: "completed", createdAt: "2026-03-05T11:00:00.000Z",
-            approvedBy: "admin-1",
-          },
-        },
-      })
-    )
-    expect(r.refunds.map((x) => x.id)).toEqual(["r1", "r2"])
-    expect(r.refundedTotal).toBe(144)
-    expect(r.remainingRefundable).toBe(100)
-  })
-
-  it("ignores refund records that are not completed", () => {
-    const r = buildReceipt(
-      base({
-        refunds: {
-          r1: {
-            id: "r1", orderId: "-Nabc123", amount: 244, reason: "Pending",
-            status: "pending", createdAt: "2026-03-05T11:00:00.000Z", approvedBy: "admin-1",
-          },
-        },
-      })
-    )
-    expect(r.refunds).toEqual([])
-    expect(r.refundedTotal).toBe(0)
-  })
-
   it("falls back to the push id for orders with no display id", () => {
     expect(buildReceipt(base({ displayId: undefined })).orderNumber).toBe("-Nabc123")
   })

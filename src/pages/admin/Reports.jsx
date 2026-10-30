@@ -8,7 +8,7 @@ import { RangePicker, defaultSelection, useRange } from "@/components/RangePicke
 import { useStore } from "@/store/AppStore"
 import { formatDateTime, orderNo, peso } from "@/lib/format"
 import { byCategory, inRange, seriesFor, topItems, validOrders } from "@/lib/stats"
-import { refundRows, totalsFor } from "@/lib/finance"
+import { totalsFor } from "@/lib/finance"
 
 function downloadCsv(filename, rows) {
   const esc = (v) => `"${String(v).replace(/"/g, '""')}"`
@@ -49,7 +49,6 @@ export default function Reports() {
       series: seriesFor(orders, range),
       categories: byCategory(sales),
       items: topItems(sales, 10),
-      refunds: refundRows(scoped),
     }
   }, [orders, range])
 
@@ -105,10 +104,9 @@ export default function Reports() {
             Gross, refunds and net are separate figures on purpose: a refund must
             reduce net without rewriting what the customer originally paid.
           */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Stat label="Gross sales" value={peso(r.t.gross)} hint="What customers were billed" />
-            <Stat label="Refunds" value={peso(r.t.refunds)} hint="Cash handed back" />
-            <Stat label="Net sales" value={peso(r.t.net)} hint="Gross − refunds" />
+            <Stat label="Net sales" value={peso(r.t.net)} hint="After discounts" />
             <Stat label="Orders" value={String(r.t.orders)} hint={`${r.t.cancelled} cancelled`} />
             <Stat label="Cups sold" value={String(r.t.itemsSold)} />
           </div>
@@ -164,34 +162,6 @@ export default function Reports() {
               </Table>
             </CardContent>
           </Card>
-
-          {r.refunds.length > 0 && (
-            <Card className="break-inside-avoid">
-              <CardHeader><CardTitle>Refund audit</CardTitle></CardHeader>
-              <CardContent className="px-0 pb-2">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order</TableHead><TableHead>Cashier</TableHead><TableHead>Reason</TableHead>
-                      <TableHead>Approved by</TableHead><TableHead>When</TableHead><TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {r.refunds.map((f) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="font-semibold">{f.orderDisplayId ?? f.orderId}</TableCell>
-                        <TableCell>{f.cashierName}</TableCell>
-                        <TableCell className="max-w-[16rem] truncate">{f.reason}</TableCell>
-                        <TableCell>{f.approvedByName ?? "Owner/Manager"}</TableCell>
-                        <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(f.createdAt)}</TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums">−{peso(f.amount)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="break-inside-avoid">

@@ -14,8 +14,7 @@
     "test:watch": "vitest",
     "test:tz": "for tz in UTC Asia/Manila America/New_York Australia/Lord_Howe; do echo \"-- TZ=$tz --\"; TZ=$tz vitest run || exit 1; done",
     "emulators": "firebase emulators:start",
-    "deploy:rules": "firebase deploy --only database",
-    "deploy:functions": "cd functions && npm install && cd .. && firebase deploy --only functions"
+    "deploy:rules": "firebase deploy --only database"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",

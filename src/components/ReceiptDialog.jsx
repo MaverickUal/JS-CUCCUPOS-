@@ -105,25 +105,6 @@ export function ReceiptDialog({
       if (typeof r.cashTendered === "number" && r.cashTendered > 0) line("Cash tendered", peso(r.cashTendered))
       if (typeof r.changeGiven === "number" && r.changeGiven > 0) line("Change given", peso(r.changeGiven))
 
-      if (r.refunds.length > 0) {
-        y += 3
-        doc.setFont("helvetica", "bold")
-        doc.text("REFUNDS", pad, y)
-        y += 4
-        doc.setFont("helvetica", "normal")
-        for (const ref of r.refunds) {
-          line(`  ${new Date(ref.createdAt).toLocaleString("en-PH")}`, `-${peso(ref.amount)}`)
-          if (ref.reason) {
-            doc.setFontSize(6.5)
-            doc.text(`    ${ref.reason}`, pad, y)
-            y += 3.5
-            doc.setFontSize(7.5)
-          }
-        }
-        line("Refunded total", `-${peso(r.refundedTotal)}`, { bold: true })
-        line("Remaining refundable", peso(r.remainingRefundable))
-      }
-
       y += 5
       doc.setFontSize(6.5)
       doc.text("Thank you! Please come again.", W / 2, y, { align: "center" })
@@ -223,32 +204,6 @@ export function ReceiptBody({ order }) {
           <Row label="Change given" value={peso(r.changeGiven)} />
         )}
       </dl>
-
-      {r.refunds.length > 0 && (
-        <div className="mt-2 border-t border-slate-300 pt-2">
-          <p className="font-bold uppercase">Refunds</p>
-          {r.refunds.map((ref) => (
-            <div key={ref.id} className="mt-1">
-              <div className="flex justify-between gap-2">
-                <span>{new Date(ref.createdAt).toLocaleString("en-PH")}</span>
-                <span className="tabular-nums">-{peso(ref.amount)}</span>
-              </div>
-              {ref.reason && <p className="text-[10px] text-slate-600">{ref.reason}</p>}
-              {ref.approvedByName && (
-                <p className="text-[10px] text-slate-600">Approved by {ref.approvedByName}</p>
-              )}
-            </div>
-          ))}
-          <div className="mt-1 flex justify-between font-bold">
-            <span>Refunded total</span>
-            <span className="tabular-nums">-{peso(r.refundedTotal)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Remaining refundable</span>
-            <span className="tabular-nums">{peso(r.remainingRefundable)}</span>
-          </div>
-        </div>
-      )}
 
       <p className="mt-3 text-center text-[10px]">Thank you! Please come again.</p>
     </div>

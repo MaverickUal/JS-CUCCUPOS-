@@ -8,7 +8,7 @@
 
 ## 1. Project in one minute
 
-**Confirmed.** CuccuPOS is a coffee-shop point-of-sale web app for staff only. It is a React SPA built with Vite (`vite.config.js`), styled with Tailwind CSS (`tailwind.config.js`), and uses React Router (`react-router-dom` 6.28) for navigation. The backend is Firebase: Auth + Realtime Database (`firebase` 13.0) and Cloud Functions (`functions/src/index.js`) for privileged operations (`refundOrder`, `createCashier`, `setCashierEnabled`).
+**Confirmed.** CuccuPOS is a coffee-shop point-of-sale web app for staff only. It is a React SPA built with Vite (`vite.config.js`), styled with Tailwind CSS (`tailwind.config.js`), and uses React Router (`react-router-dom` 6.28) for navigation. The backend is Firebase: Auth + Realtime Database (`firebase` 13.0).
 
 What a user can do:
 - **Cashier** (`/order`, `/history`): build orders (menu items, typed quantity, discount, cash tendered), confirm checkout, see only their own order history, print receipts.
@@ -20,8 +20,7 @@ From startup to first screen:
 Where the most important behavior lives:
 - Routes / guards: `src/App.jsx`
 - Global state / subscriptions: `src/store/AppStore.jsx`
-- All Firebase / Auth calls: `src/lib/actions.js` (pages never import Firebase directly — confirmed by `codebase_summary.md`)
-- Privileged server operations: `functions/src/index.js`
+- All Firebase / Auth calls: `src/services/*.services.js` (pages never import Firebase directly)
 - Database security rules: `database.rules.json` (source of truth for access control)
 - System rules / screen descriptions: `system_summary.md`
 
@@ -64,10 +63,9 @@ src/
     AppStore.jsx              # React context: users, menu, orders, cart, currentUser, authReady
 
   lib/
-    actions.js                # 31 exports — every RTDB + Auth call; mutations return {success, message, data}
-    functionsClient.js        # Callables to Cloud Functions (refund, createCashier, setCashierEnabled)
+    services/                 # RTDB + Auth calls split by entity; mutations return {success, message, data}
     stats.js                  # Date ranges, bucketing, aggregates (pure, no Firebase import)
-    finance.js                # Gross / refunds / net, refundable amount (pure)
+    finance.js                # Gross / net totals (pure)
     discounts.js              # Discount maths + statutory basis (20% rate confirmed by RA 10754 / RA 7432)
     duplicates.js             # Product-name normalization + duplicate detection (pure)
     receipt.js                # Pure receipt model + filenames
@@ -81,7 +79,6 @@ src/
     AppShell.jsx              # Sidebar, header, notification bell, logout
     RangePicker.jsx           # Shared period selector (Dashboard + Reports)
     DiscountPicker.jsx        # PWD / Senior Citizen selector
-    RefundDialog.jsx          # Refund confirmation + reason input
     ReceiptDialog.jsx         # Print + PDF for one transaction
     StatusBadge.jsx           # Order status → colour mapping
     QuantityStepper.jsx       # +/- and typed quantity input
@@ -105,10 +102,8 @@ src/
       Reports.jsx             # Period report, CSV, PDF
 
   data/
-    seed.js                   # Reference seed data (menu, roles)
 
   functions/
-    src/index.js              # refundOrder, createCashier, setCashierEnabled (Admin SDK, v2 callable)
 
 Root config:
   .env.example                # Firebase web config template (public by design; no secrets)
@@ -144,8 +139,7 @@ Data flows one way through three layers:
         │                        ▼
         │                 Firebase Auth + Realtime Database
         │
-        └──────────────► lib/functionsClient.js  → Cloud Functions (Admin SDK)
-```
+    ```
 
 Pages never import Firebase (`codebase_summary.md` line 106). This is a confirmed design choice.
 
@@ -252,9 +246,9 @@ Cart stays in React local state — never persisted.
 ### 6.7 `Orders` (`src/pages/admin/Orders.jsx`)
 - **Purpose:** Admin order board.
 - **Inputs:** All orders (`/orders`).
-- **Output:** Filter/search; status advance (`pending` → `preparing` → `ready` → `completed`); cancel; refund (`RefundDialog`); details view.
+- **Output:** Filter/search; status advance (`pending` → `preparing` → `ready` → `completed`); cancel; details view.
 - **Changes (34100e5):** Historical price shown: `peso(i.price)` (+2 lines; `system_summary.md` 235).
-- **Connections:** `AppShell`; `AppStore`; `RefundDialog`; `StatusBadge`.
+- **Connections:** `AppShell`; `AppStore`; `StatusBadge`.
 - **Edge cases:** Cancelled orders contribute nothing to finance; refund shows existing refunded amount + remaining balance.
 - **Student explanation:** Manager command center for every order — change status, cancel, refund.
 
@@ -282,7 +276,6 @@ Cart stays in React local state — never persisted.
 `user taps +` → `OrderPage` updates `cartQtyMap` → `QuantityStepper` clamps 1–99 → `store` checks `available`; sold-out blocked (`system_summary.md`) → checkout: `DiscountPicker` (optional 20%) → cash typed (`parseQty` / input) → change computed (`discounts.js`, `receipt.js`) → confirm → `actions.js` validates (`orderSchema`) → writes `/orders/<uid>/<orderId>` (`pending`) → success screen shows `Return ₱X change` (`format.js`)
 
 ### B. Admin refunds
-`Orders.jsx` opens `RefundDialog` → shows refunded amount + remaining balance (`finance.js`) → reason typed → confirm → `actions.js` / SDK transaction writes `/orders/.../refunds` → `database.rules.json` blocks direct client `.write` to refunds (privileged only via `functions/`) → original order never deleted; duplicate refunds rejected
 
 ### C. Admin reports period
 `Reports.jsx` → `RangePicker` selects range → `stats.js` buckets (hourly/daily) → `finance.js` computes gross / refunds / net → CSV / PDF exported; `receipt.js` builds filenames; `format.js` formats dates/pesos
@@ -306,11 +299,10 @@ Cart stays in React local state — never persisted.
 
 **What is integrated (confirmed):**
 - React Router routes (`App.jsx`)
-- Firebase Auth + RTDB (`store/AppStore.jsx`, `lib/actions.js`)
-- Cloud Functions (`functions/src/index.js`; `lib/functionsClient.js` calls them)
+- Firebase Auth + RTDB (`store/AppStore.jsx`, `services/*.services.js`)
 - Tailwind + shadcn/ui primitives (`components/ui/`)
 - Recharts charts (`Dashboard.jsx`)
-- Zod validation (`lib/actions.js` for orders; tests in `__tests__`)
+- Zod validation (`lib/schemas.js` for orders; tests in `__tests__`)
 
 **What configuration suggests but is not fully verifiable:**
 - `.env.local` — required Firebase web config values; file exists locally (`.env.local`) with real values (`git status` shows untracked/ignored); must not be committed. **Risk:** if `.env.local` exposed, the public Firebase API key could be used by anyone, though access is controlled by `database.rules.json`. Do not reproduce contents.
@@ -409,16 +401,13 @@ A: Confirmed yes (`system_summary.md` 233): file deleted (`Register.jsx`); route
 **Q: Why does the receipt rebuild from pure data?**
 A: `receipt.js` has no Firebase import. Confirmed by `codebase_summary.md`: pure modules (`receipt.js`, `stats.js`, etc.) have no Firebase import; tests cover them. This makes receipt generation deterministic and fast.
 
-**Q: How are refunds protected?**
-A: Refund dialog (`RefundDialog.jsx`) requires reason; writes via SDK transaction; `database.rules.json` prevents direct client `.write` to refunds; `functionsClient.js` provides privileged `refundOrder`. Confirmed by `system_summary.md`, `README.md` lines 42–44.
-
 ---
 
 ## 12. Glossary of project-specific terms
 
 - **AppShell (`src/components/AppShell.jsx`):** Shared layout (sidebar, header, notifications, logout) for cashier and admin variants.
 - **AppStore / `useStore` (`src/store/AppStore.jsx`):** React context holding subscriptions (`users`, `menu`, `orders`), `currentUser`, `authReady`, and local `cart`.
-- **Actions (`src/lib/actions.js`):** Every Firebase Auth / RTDB call; mutations return `{success, message, data}`; reads are live subscriptions or one-shot promises (`getXOnce`).
+- **Services (`src/services/*.services.js`):** Every Firebase Auth / RTDB call; mutations return `{success, message, data}`; reads are live subscriptions or one-shot promises (`getXOnce`).
 - **Role-scoped subscriptions:** `AppStore` listens to different DB paths based on `currentUser.role` (admin = `/orders` + `/users`; cashier = `/orders/<uid>`).
 - **RangePicker (`src/components/RangePicker.jsx`):** Shared period picker between `Dashboard` and `Reports`; switches bucket mode (hourly/daily) based on selection.
 - **CATEGORIES (`src/types.js`):** Unified export added in `34100e5`; used in `Menu.jsx` + `Order.jsx` filters.
@@ -426,7 +415,6 @@ A: Refund dialog (`RefundDialog.jsx`) requires reason; writes via SDK transactio
 - **Order number:** Client-generated (`ORD-MVC26YJ9`); `orderNo()` in `format.js`. Confirmed `system_summary.md`: shared counter not used (would require unsafe `/counters` write).
 - **PURCHASE / CASH ONLY:** Confirmed `system_summary.md`: one payment method (`cashTendered`, `changeGiven`).
 - **DISCOUNT RATE = 0.2:** Confirmed by `discounts.js` header and `system_summary.md`: 20% matches RA 10754 (PWD) and RA 7432 / RA 9994 / RA 11916 (Senior Citizen). No ID proof captured (not compliant for tax deduction claim).
-- **Cloud Functions (`functions/src/index.js`):** `refundOrder`, `createCashier`, `setCashierEnabled` — privileged server-side operations requiring Admin SDK.
 - **Waiting:** Spinner shown when `!authReady` (`App.jsx` 23) — prevents redirect loop on deep links.
 - **History price (`peso(i.price)`):** Added in `Orders.jsx` (34100e5) so admin sees original price at order time, not current menu price.
 - **Receipt zero-fix:** `qty > 0` filter and `cashTendered`/`changeGiven` > 0 guard added in `34100e5` (`ReceiptDialog.jsx` 4 lines; `receipt.js` 2 lines).

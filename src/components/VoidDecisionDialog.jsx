@@ -3,12 +3,10 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { OrderSummary } from "@/components/OrderSummary"
 import { VoidRequestInfo } from "@/components/VoidAudit"
 import { useStore } from "@/store/AppStore"
 import { orderNo } from "@/lib/format"
-import { MAX_REASON, validateReason } from "@/lib/voids"
 import { useGuardedSubmit } from "@/lib/useGuardedSubmit"
 
 /**
@@ -20,19 +18,16 @@ import { useGuardedSubmit } from "@/lib/useGuardedSubmit"
  */
 export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
   const { approveVoid, declineVoid } = useStore()
-  const [reason, setReason] = useState("")
   const { busy, error, setError, run } = useGuardedSubmit()
 
   useEffect(() => {
     if (!open) return
-    setReason("")
     setError("")
   }, [open, order?.id, mode])
 
   if (!order || order.status !== "pending_void") return null
 
   const approving = mode === "approve"
-  const reasonError = approving ? null : validateReason(reason)
 
   async function submit() {
     const res = await run(() => (approving ? approveVoid(order, "cancelled") : declineVoid(order)))
@@ -59,25 +54,11 @@ export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
         <OrderSummary order={order} />
         <VoidRequestInfo order={order} />
 
-        {!approving && (
-          <div className="space-y-1.5">
-            <Label htmlFor="decline-reason">Reason for declining</Label>
-            <textarea
-              id="decline-reason"
-              rows={3}
-              maxLength={MAX_REASON}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="flex w-full rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-        )}
-
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant={approving ? "destructive" : "default"} disabled={busy || !!reasonError} onClick={submit}>
+          <Button variant={approving ? "destructive" : "default"} disabled={busy} onClick={submit}>
             {busy && <Loader2 className="animate-spin" />}
             {busy ? "Saving…" : approving ? "Approve void" : "Decline void"}
           </Button>

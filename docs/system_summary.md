@@ -64,27 +64,15 @@ anything is committed. The order stores `subtotal`, `discountType`,
 > satisfies the statutory ban on double-discounting a person who is both PWD and
 > Senior Citizen. VAT is not modelled at all — that is separate BIR bookkeeping.
 
-### Refunds
-
-An Owner/Manager can refund an order fully or partially from the order details
-dialog. The dialog shows the amount already refunded and the remaining refundable
-balance, requires a reason, and asks for confirmation. Refunds cannot exceed what
-was paid, duplicates are rejected, and the original order is never deleted.
-
-Refunds are recorded **only after cash has actually been handed back** — the
-write happens in a client SDK transaction on the order record, not optimistically
-in the UI. Authorized Owner/Manager only.
-
----
 
 ## Screens
 
 | Screen | Purpose |
 |---|---|
 | **Dashboard** | Sales/order/average for a chosen period, sales chart, best sellers, recent orders — filterable by cashier |
-| **Orders** | Every order newest-first with status filters and search; advance status, cancel, view details, refund, print/export receipt |
+| **Orders** | Every order newest-first with status filters and search; advance status, cancel, view details, print/export receipt |
 | **Menu** | Add, edit, delete items; sold-out toggle; duplicate-name review |
-| **Cashiers** | Every staff account with its role, order count and last order; create cashier accounts, disable access |
+| **Cashiers** | Every staff account with its role, order count and last order; disable access |
 | **Reports** | Period report — gross / refunds / net, chart, category split, top items, refund audit, CSV export, print/PDF |
 | **Order** (cashier) | Menu browse, cart with typed quantity, cash checkout with discount |
 | **History** (cashier) | Own orders newest-first, live status bar, receipt/PDF, reorder |
@@ -120,12 +108,9 @@ Choosing today (including via Custom) switches to hourly automatically. KPIs and
 | Sold-out items cannot be ordered | Client checks `available`; store rejects |
 | Orders always start `pending` | `orderSchema` and the security rules both reject any other status at creation |
 | Cancelled orders count as zero everywhere | `validOrders()` filters them out of all sales figures |
-| Cancelled orders cannot be refunded | Refund function rejects them |
 | Orders are never deleted | Cancelled or refunded, to preserve the sales record |
 | Cashier sees only their own orders | Path scoping + security rules |
 | Only admins change menu or order status | Security rules |
-| Only admins approve refunds | Cloud Function re-reads the caller's role |
-| Refunds never exceed what was paid | Atomic check in the refund function |
 | Only admins create or disable accounts | Cloud Functions |
 | A user cannot change their own role | `role` validation rule |
 | Nobody self-promotes to admin | `role` validation rule, and there is no UI to do it |
@@ -173,12 +158,9 @@ Firebase Auth owns credentials; the RTDB stores no passwords. Access is decided 
 |---|---|---|---|
 | `menu` | read | read | read + write |
 | `orders` | — | read/write own subtree | read + write all |
-| `orders/…/refunds` | — | — | **no client access at all** |
 | `users` | — | read/write own profile | read + write all |
 
 Validation lives in the rules too: prices must be positive, order totals positive, item quantities 1–99, and an order's `customerId` must match the path it sits under.
-
-Refunds are deliberately `".write": false` for every client. They can only be written by the Cloud Function's Admin SDK, which bypasses the rules — that is precisely what makes the refund record trustworthy, since no browser code can fabricate one.
 
 **The rules are the security boundary.** Hiding a button in React protects nothing.
 
@@ -191,8 +173,6 @@ Stated plainly rather than buried:
 1. **Prices are still client-supplied.** The schema now recomputes subtotal, discount and total from the line items and rejects a mismatch, and the rules cap quantity at 1–99 — but nothing checks `items[].price` against the live menu. A modified client could send `price: 1` for a ₱80 drink. Closing this properly means computing orders server-side in a Cloud Function, which would move order creation off the current path. **Not acceptable once real money is involved; acceptable while payment is a mock.**
 
 2. **Discount entitlement is not evidenced.** The 20% rate is now verified against RA 10754 Sec. 32(a)(1) and RA 7432 Sec. 5(a) as amended. What is missing is proof: the law requires the concession holder's name, ID number and TIN on the sales record before the discount can be claimed as a tax deduction, and the app stores only the discount type. The owner must decide whether to capture ID details — that is a privacy decision, not a code default. See `src/lib/discounts.js`.
-
-3. **Cloud Functions are optional.** Refunds and cashier disabling now run through the Firebase client SDK and RTDB rules. The functions in `functions/` may remain unused or be removed; they are not a prerequisite.
 
 4. **Admin self-demotion is blocked by rules.** An admin cannot change their own `role` (including self-demotion) via the database rules.><|end|><|start|>edit to=assistant<|channel|>analysis<|message|>Edited system_summary.md (1 replacement)
 
@@ -208,20 +188,17 @@ Stated plainly rather than buried:
 
 ## Accounts
 
-No credentials are stored in this repository. Staff accounts come from three
+No credentials are stored in this repository. Staff accounts come from two
 places:
 
 | Source | Resulting role |
 |---|---|
 | Provisioned manually in Firebase Console | `cashier` |
-| Created by an Owner/Manager at `/admin/cashiers` | `cashier` |
 | Hand-edited in the Firebase console | `admin` — the only way to make an administrator |
 
-New accounts register at `/register` with the `cashier` role. An Owner/Manager can
-also create cashier accounts from `/admin/cashiers`, which goes through a Cloud
-Function because creating another user's sign-in needs the Admin SDK. Promoting
-someone to `admin` has to be done by hand in the Firebase console — the rules
-deliberately prevent the app from granting it.
+New accounts register at `/register` with the `cashier` role. Promoting someone to
+`admin` has to be done by hand in the Firebase console — the rules deliberately
+prevent the app from granting it.
 
 ## Fix log (batch 1 — 6, 9, 10, 11)
 - 6 Category: unified `CATEGORIES` export in `types.js`; used in Menu + Order filters.
