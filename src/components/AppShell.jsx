@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
-import { Bell, BarChart3, Check, ClipboardList, Coffee, CupSoda, History, LayoutDashboard, LayoutGrid, LogOut, Menu as MenuIcon, PanelLeftClose, PanelLeftOpen, Search, Users, X } from "lucide-react"
+import { Bell, BarChart3, Check, ClipboardList, CupSoda, History, LayoutDashboard, LayoutGrid, LogOut, Menu as MenuIcon, PanelLeftClose, Search, Users, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AVAIL_OPTIONS, SORT_OPTIONS, useMenuFilters } from "@/lib/useMenuFilters"
@@ -105,28 +105,44 @@ function TopSearch() {
 const SIDEBAR_KEY = "cuccupos.sidebar.expanded"
 
 /** Icon rail that expands to show labels. Shared by the desktop sidebar and the mobile drawer. */
-function SideNav({ nav, expanded, onToggle, onNavigate, onLogout, closeIcon }) {
+function SideNav({ nav, expanded, onToggle, onNavigate, closeIcon }) {
   const location = useLocation()
   const item = "flex h-11 w-full items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
   const layout = expanded ? "justify-start gap-3 px-3" : "justify-center"
   return (
     <>
       <div className={cn("mb-4 flex items-center", expanded ? "justify-between gap-2" : "flex-col gap-3")}>
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm" title="CuccuPOS">
-            <Coffee className="size-5" strokeWidth={2.5} />
-          </span>
-          {expanded && <span className="text-xl font-bold tracking-tight">Cuccu<span className="text-primary">POS</span></span>}
-        </div>
         <button
+          type="button"
           onClick={onToggle}
           title={closeIcon ? "Close menu" : expanded ? "Collapse sidebar" : "Expand sidebar"}
           aria-label={closeIcon ? "Close menu" : expanded ? "Collapse sidebar" : "Expand sidebar"}
           aria-expanded={closeIcon ? undefined : expanded}
-          className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex items-center gap-2.5 rounded-xl transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {closeIcon ? <X className="size-5" /> : expanded ? <PanelLeftClose className="size-5" /> : <PanelLeftOpen className="size-5" />}
+          <img src="/cuccupos-logo.svg" alt="CuccuPOS" className="size-10 shrink-0" />
+          {expanded && <span className="text-xl font-bold tracking-tight">Cuccu<span className="text-primary">POS</span></span>}
         </button>
+        {expanded && !closeIcon && (
+          <button
+            onClick={onToggle}
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+            className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <PanelLeftClose className="size-5" />
+          </button>
+        )}
+        {closeIcon && (
+          <button
+            onClick={onToggle}
+            title="Close menu"
+            aria-label="Close menu"
+            className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-5" />
+          </button>
+        )}
       </div>
       {nav.map(({ to, label, icon: Icon }) => (
         <NavLink
@@ -135,7 +151,11 @@ function SideNav({ nav, expanded, onToggle, onNavigate, onLogout, closeIcon }) {
           title={expanded ? undefined : label}
           aria-label={label}
           aria-current={location.pathname === to ? "page" : undefined}
-          onClick={onNavigate}
+          onClick={(e) => {
+            // Auto-expand the rail when a nav item is clicked while collapsed.
+            if (!expanded && onToggle) onToggle()
+            onNavigate?.(e)
+          }}
           className={({ isActive }) =>
             cn(item, layout, isActive && "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground")
           }
@@ -144,10 +164,6 @@ function SideNav({ nav, expanded, onToggle, onNavigate, onLogout, closeIcon }) {
           {expanded && <span className="truncate text-sm font-semibold">{label}</span>}
         </NavLink>
       ))}
-      <button onClick={onLogout} title={expanded ? undefined : "Log out"} aria-label="Log out" className={cn(item, layout, "mt-auto")}>
-        <LogOut className="size-5 shrink-0" />
-        {expanded && <span className="truncate text-sm font-semibold">Log out</span>}
-      </button>
     </>
   )
 }
@@ -183,7 +199,7 @@ function Shell({ variant }) {
     <div className="flex h-screen overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
       {/* Desktop sidebar: icon rail that expands to show labels */}
       <aside className={cn("hidden shrink-0 flex-col gap-2 border-r bg-card px-3 py-5 transition-[width] duration-200 lg:flex print:hidden", expanded ? "w-60" : "w-[72px]")}>
-        <SideNav nav={nav} expanded={expanded} onToggle={() => setExpanded((v) => !v)} onLogout={doLogout} />
+        <SideNav nav={nav} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
       </aside>
 
       {/* Mobile drawer */}
@@ -191,7 +207,7 @@ function Shell({ variant }) {
         <div className="fixed inset-0 z-50 lg:hidden print:hidden">
           <div className="absolute inset-0 bg-foreground/40" onClick={() => setDrawerOpen(false)} aria-hidden />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col gap-2 bg-card px-3 py-5 shadow-2xl" role="dialog" aria-label="Navigation">
-            <SideNav nav={nav} expanded closeIcon onToggle={() => setDrawerOpen(false)} onNavigate={() => setDrawerOpen(false)} onLogout={doLogout} />
+            <SideNav nav={nav} expanded closeIcon onToggle={() => setDrawerOpen(false)} onNavigate={() => setDrawerOpen(false)} />
           </aside>
         </div>
       )}
