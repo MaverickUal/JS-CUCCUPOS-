@@ -8,28 +8,10 @@ import { toast } from "sonner"
 import { computeDiscount } from "@/lib/discounts"
 import { sortByCreatedAtDesc } from "@/lib/stats"
 import { round2 } from "@/lib/format"
-import {
-  getMenuItems,
-  getOrders,
-  getUsers,
-  subscribeUserProfile,
-  onAuthChange,
-  loginUser,
-  registerUser,
-  logoutUser,
-  placeOrder as placeOrderAction,
-  updateOrderStatus as updateOrderStatusAction,
-  addMenuItem as addMenuItemAction,
-  updateMenuItem as updateMenuItemAction,
-  deleteMenuItem as deleteMenuItemAction,
-  toggleAvailability as toggleAvailabilityAction,
-  resetDemoData as resetDemoDataAction,
-  refundOrder as refundOrderAction,
-  setCashierEnabled as setCashierEnabledAction,
-  createCashierAccount as createCashierAction,
-  requestVoid as requestVoidAction,
-  approveVoid as approveVoidAction,
-} from "@/lib/actions"
+import { getMenuItems, addMenuItem as addMenuItemAction, updateMenuItem as updateMenuItemAction, deleteMenuItem as deleteMenuItemAction, toggleAvailability as toggleAvailabilityAction } from "@/services/menu.services"
+import { getOrders, placeOrder as placeOrderAction, updateOrderStatus as updateOrderStatusAction, requestVoid as requestVoidAction, approveVoid as approveVoidAction } from "@/services/orders.services"
+import { getUsers, subscribeUserProfile, setCashierEnabled as setCashierEnabledAction } from "@/services/users.services"
+import { onAuthChange, loginUser, registerUser, logoutUser } from "@/services/auth.services"
 
 export const MAX_QTY = 99
 
@@ -233,8 +215,12 @@ export function StoreProvider({ children }) {
 
   const updateOrderStatus = async (id, status) => {
     const order = orders.find((o) => o.id === id)
-    if (!order) return
-    await updateOrderStatusAction(order.customerId, id, status)
+    if (!order) return { success: false, message: "Order not found." }
+    const res = await updateOrderStatusAction(order.customerId, id, status)
+    if (res && res.success === false) {
+      toast.error(res.message || "Could not update the order status.")
+    }
+    return res
   }
 
   const saveMenuItem = async (input) => {
@@ -289,17 +275,14 @@ export function StoreProvider({ children }) {
     reorder,
     placeOrder,
     previewDiscount,
-    refundOrder: refundOrderAction,
     requestVoid,
     approveVoid,
     declineVoid,
     setCashierEnabled: setCashierEnabledAction,
-    createCashier: createCashierAction,
     updateOrderStatus,
     saveMenuItem,
     deleteMenuItem: deleteMenuItemAction,
     toggleAvailability,
-    resetDemoData: resetDemoDataAction,
   }
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

@@ -3,7 +3,7 @@
  * values the calculator would never produce.
  */
 import { describe, expect, it } from "vitest"
-import { orderSchema } from "@/lib/actions"
+import { orderSchema } from "@/lib/schemas"
 
 const items = {
   m_1: { menuItemId: "m_1", name: "Iced Americano", price: 80, qty: 2, category: "Coffee" },

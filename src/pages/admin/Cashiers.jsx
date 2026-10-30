@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Loader2, Search, ShieldCheck, UserPlus } from "lucide-react"
+import { Search } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -144,88 +144,3 @@ export default function AdminCashiers() {
   )
 }
 
-function CreateCashierDialog({
-  open,
-  onOpenChange,
-  onCreate,
-}) {
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" })
-  const [error, setError] = useState("")
-  const [busy, setBusy] = useState(false)
-  const set = (k) => (e) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }))
-
-  function reset() {
-    setForm({ name: "", email: "", password: "", confirm: "" })
-    setError("")
-  }
-
-  async function submit(e) {
-    e.preventDefault()
-    setError("")
-    if (form.name.trim().length < 2) return setError("Enter the cashier's full name.")
-    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return setError("Enter a valid email address.")
-    if (form.password.length < 8) return setError("Password must be at least 8 characters.")
-    if (form.password !== form.confirm) return setError("Passwords don't match.")
-
-    setBusy(true)
-    const res = await onCreate(form.name.trim(), form.email.trim(), form.password)
-    setBusy(false)
-    if (!res.success) return setError(res.message)
-    toast.success(res.message)
-    reset()
-    onOpenChange(false)
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (busy) return
-        if (!o) reset()
-        onOpenChange(o)
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><UserPlus className="size-5" /> Add cashier</DialogTitle>
-          <DialogDescription>
-            Creates a sign-in account with the Cashier role. New accounts cannot be made administrators.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submit} className="grid gap-3" noValidate>
-          <div className="space-y-1.5">
-            <Label htmlFor="cname">Full name</Label>
-            <Input id="cname" autoComplete="off" value={form.name} onChange={set("name")} disabled={busy} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cemail">Email</Label>
-            <Input id="cemail" type="email" autoComplete="off" value={form.email} onChange={set("email")} disabled={busy} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="cpass">Password</Label>
-              <Input id="cpass" type="password" autoComplete="new-password" value={form.password} onChange={set("password")} disabled={busy} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cconfirm">Confirm password</Label>
-              <Input id="cconfirm" type="password" autoComplete="new-password" value={form.confirm} onChange={set("confirm")} disabled={busy} />
-            </div>
-          </div>
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
-            Requires the backend functions to be deployed
-            (<code className="rounded bg-muted px-1">firebase deploy --only functions</code>).
-          </p>
-          {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-            <Button type="submit" disabled={busy}>
-              {busy ? <><Loader2 className="animate-spin" /> Creating…</> : "Create cashier"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}

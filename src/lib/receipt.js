@@ -1,4 +1,3 @@
-import { refundedOf, remainingRefundable } from "@/lib/finance"
 import { formatDateTime, orderNo, peso } from "@/lib/format"
 
 export const SHOP_NAME = "CuccuPOS"
@@ -28,18 +27,6 @@ export function buildReceipt(order) {
   // subtotal is just the total, and no discount line is shown.
   const subtotal = typeof order.subtotal === "number" ? order.subtotal : order.total
   const discountAmount = typeof order.discountAmount === "number" ? order.discountAmount : 0
-  const refundedTotal = refundedOf(order)
-
-  const refunds = Object.values(order.refunds ?? {})
-    .filter((r) => r?.status === "completed")
-    .map((r) => ({
-      id: r.id,
-      createdAt: r.createdAt,
-      amount: Number(r.amount ?? 0),
-      reason: r.reason,
-      approvedByName: r.approvedByName,
-    }))
-    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
 
   return {
     shopName: SHOP_NAME,
@@ -57,9 +44,6 @@ export function buildReceipt(order) {
     paymentMethod: order.paymentMethod,
     cashTendered: order.cashTendered,
     changeGiven: order.changeGiven,
-    refunds,
-    refundedTotal,
-    remainingRefundable: remainingRefundable(order),
   }
 }
 

@@ -36,11 +36,9 @@ This file describes **how the code is organised**. For what the system *does* an
 ├── vite.config.js        React plugin + "@" → src/ alias
 ├── vitest.config.js      Test runner, TZ pinned to UTC
 ├── components.json       shadcn/ui config
-├── database.rules.json   Deployed RTDB rules — source of truth
-├── firebase.json         Points at the rules, functions and hosting
+├── docs/database.rules.json   Deployed RTDB rules — source of truth
+├── firebase.json         Points at the rules and hosting
 │
-├── functions/            Cloud Functions (privileged operations)
-│   └── src/index.js      refundOrder, createCashier, setCashierEnabled
 │
 └── src/
     ├── main.jsx          Router + StoreProvider + Toaster mount
@@ -50,10 +48,9 @@ This file describes **how the code is organised**. For what the system *does* an
     │
     ├── store/AppStore.jsx    React context: the single source of truth for pages
     ├── lib/
-    │   ├── actions.js        Every RTDB + Auth call — 31 exports
-    │   ├── functionsClient.js Callables to the Cloud Functions
+    │   ├── services/         RTDB + Auth calls, split by entity
     │   ├── stats.js          Date ranges, bucketing, sorting, aggregates
-    │   ├── finance.js        Gross / refunds / net, refundable amount
+    │   ├── finance.js        Gross / net totals
     │   ├── discounts.js      Discount maths + statutory basis and open assumptions
     │   ├── duplicates.js     Product-name normalization + duplicate detection
     │   ├── receipt.js        Pure single-transaction receipt model + filenames
@@ -67,7 +64,6 @@ This file describes **how the code is organised**. For what the system *does* an
     │   ├── AppShell.jsx      Sidebar, header, notification bell, logout
     │   ├── RangePicker.jsx   Shared period selector (dashboard + reports)
     │   ├── DiscountPicker.jsx  PWD / Senior Citizen selector
-    │   ├── RefundDialog.jsx  Owner/Manager refund with confirmation
     │   ├── ReceiptDialog.jsx  Print + PDF export for one transaction
     │   ├── StatusBadge.jsx   Order status → colour
     │   ├── QuantityStepper.jsx  +/- plus a typed quantity field
@@ -80,7 +76,6 @@ This file describes **how the code is organised**. For what the system *does* an
     │   ├── customer/         Order (cart + checkout), History
     │   └── admin/            Dashboard, Orders, Menu, Cashiers, Reports
     │
-    └── data/seed.js       Reference seed data (menu, roles)
 ```
 
 ---
@@ -95,23 +90,22 @@ Data flows one way and stops at three layers:
       ▼
   AppStore (React context)          ← the only state pages see
       │
-      ├──────────────► lib/actions.js          RTDB + Auth
+      ├──────────────► services/*.services.js  RTDB + Auth
       │                        │
       │                        ▼
       │                 Firebase Auth + Realtime Database
       │
-      └──────────────► lib/functionsClient.js  → Cloud Functions (Admin SDK)
 ```
 
 **Pages never import Firebase.** That constraint is what made the backend swap possible: the original `localStorage` mock was replaced wholesale without touching a single page's data access.
 
-Privileged operations take a second path through `functionsClient.js`, because refunds, account creation and account disabling need the Admin SDK and an atomic transaction. Those calls bypass the security rules by design — which is exactly why `orders/.../refunds` is `".write": false` for every client.
+Privileged operations are handled through the Realtime Database rules and client-side transactions.
 
 ### Pure logic modules
 
 `stats.js`, `finance.js`, `discounts.js`, `duplicates.js`, `receipt.js` and `roles.js` have no Firebase import at all. That is what makes the test suite fast and deterministic — no emulator, no credentials. `parseQty` is the one tested export in `components/`, deliberately kept next to the input that uses it.
 
-### Layer 1 — `lib/actions.js`
+### Layer 1 — `services/*.services.js`
 
 Every RTDB and auth call, 31 exports grouped as menu / orders / auth / users. Conventions:
 
@@ -153,10 +147,10 @@ Presentational. Each consumes `useStore()` and holds only view-local state (sear
 | `/order` | cashier | Cart + cash checkout with discount |
 | `/history` | cashier | Own orders, status tracker, reorder |
 | `/admin/dashboard` | admin | KPIs + sales chart + best sellers, cashier filter |
-| `/admin/orders` | admin | Order board, status flow, cancel, refund |
+| `/admin/orders` | admin | Order board, status flow, cancel |
 | `/admin/menu` | admin | Menu CRUD, sold-out toggle |
 | `/admin/cashiers` | admin | Cashier list, create/disable accounts |
-| `/admin/reports` | admin | Period report, gross/refunds/net, CSV, print |
+| `/admin/reports` | admin | Period report, gross/net, CSV, print |
 | `*` | — | Redirect to home or `/login` |
 
 Guards live in `App.jsx`: `RequireRole`, `PublicOnly`, `RootRedirect`, all gated on `authReady`.
@@ -172,7 +166,7 @@ Guards live in `App.jsx`: `RequireRole`, `PublicOnly`, `RootRedirect`, all gated
 - **Icons** — lucide-react only.
 - **Money** — rounded to 2 decimals (`money()` in the store, `round2` in the pure modules) to avoid float drift. Never accept a total from a caller; recompute it.
 - **Testing** — `npm test` runs 200 unit tests over the pure modules (`stats`, `finance`, `discounts`, `duplicates`, `receipt`, `roles`), the quantity parser, the dashboard filter logic and the order schema. `npm run test:tz` re-runs them in four timezones, because date logic is the most likely thing to break.
-- **Where the split is** — the browser owns reads and ordinary writes; Cloud Functions own anything privileged (refunds, account creation, account disabling). If a change needs the Admin SDK or an atomic multi-node check, it belongs in `functions/`, not `actions.js`.
+- **Where the split is** — the browser owns reads and writes permitted by the Realtime Database rules. Atomic multi-node checks live in the service layer where needed.
 
 ---
 
@@ -184,7 +178,6 @@ Guards live in `App.jsx`: `RequireRole`, `PublicOnly`, `RootRedirect`, all gated
 4. **Order numbers are client-generated** (`ORD-MVC26YJ9`, `makeDisplayId()`). A shared counter would need customers to write to `/counters`, which can't be made safe.
 5. **Money is recomputed, never trusted.** `orderSchema` re-derives subtotal, discount and total from the line items and rejects anything that doesn't reconcile. Change the maths in `discounts.js`, not in the caller.
 6. **The discount rate is verified; the eligibility evidence is not.** `DISCOUNT_RATE = 0.2` matches RA 10754 Sec. 32(a)(1) (PWD) and RA 7432 Sec. 5(a) as amended (Senior Citizen), both of which cover a coffee shop. The app does not record the ID proof the law requires to claim the discount as a tax deduction — see the header of `discounts.js`.
-7. **Refunds and cashier disabling now use the client SDK.** They run through `lib/actions.js` and RTDB rules; Cloud Functions are optional. Client-side checks remain advisory.
 8. **The admin feed arrives grouped by cashier**, not chronologically. `sortByCreatedAtDesc` in the store is what fixes the ordering — don't assume `orders` is already sorted at the data layer.
 9. **`parseDayInput` rejects impossible dates deliberately.** Re-adding plain `new Date(y, m, d)` reintroduces the silent Feb 31 → Mar 3 bug.
 10. **The rules in the repo may be behind what's deployed.** Compare `database.rules.json` with the Firebase console before debugging an access error.

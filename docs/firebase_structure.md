@@ -251,17 +251,8 @@ refund or inflate `refundedTotal`.
 
 ## Backend functions
 
-Three operations cannot be done safely from a browser and live in
-`functions/src/index.js`:
-
-| Function | Why it needs a server |
-|----------|-----------------------|
-| `refundOrder` | The "amount remaining" check must be atomic (two refunds could otherwise both pass), and `approvedBy` must come from the verified session rather than client input. |
-| `createCashier` | Creating an Authentication user for somebody else needs the Admin SDK. |
-| `setCashierEnabled` | Disabling an Authentication account also needs the Admin SDK, and does not cascade to the database. |
-
-Every function re-reads the caller's role from the database rather than trusting
-the ID token, so a token issued before a role change cannot grant access.
+No Cloud Functions are used. Privileged operations are handled through the
+Realtime Database rules and client-side transactions.
 
 Deploy with:
 
@@ -361,7 +352,7 @@ field is likewise locked to the caller's own auth token email.
 | Customers only see their own orders | Orders are nested at `/orders/<customerId>/`, so a cashier's read of their own subtree is the only one the rules grant them. |
 | Passwords are never stored in DB | Firebase Auth handles authentication. The `users` node contains no password field. |
 | Only `cashier` or `admin` are valid roles | `role` `.validate` in `database.rules.json`; `loginUser` in `actions.js` refuses to sign in a profile whose role is missing or unrecognised; `roleLabel` in `src/lib/roles.js` shows such an account as "Unknown" rather than mislabelling it. |
-| Disabled accounts cannot sign in | `loginUser` rejects a profile with `disabled === true` and signs the session back out. `setCashierEnabled` also sets an auth custom claim. |
+| Disabled accounts cannot sign in | `loginUser` rejects a profile with `disabled === true` and signs the session back out. |
 | Refunds are Owner/Manager-only and appended atomically | `refundOrder` Cloud Function re-reads the caller's role, then runs a transaction on the order. `orders/*/*/refunds` has `".write": false` in the rules, so no client can write one. |
 
 ---
@@ -400,8 +391,7 @@ themselves:
 Realtime Database → Data → users/<uid>/role → "admin"
 ```
 
-**To reset from inside the app**, an admin can call `resetDemoData()` in
-`src/lib/actions.js`, which restores the menu and clears orders using admin rights.
+Demo data reset helpers have been removed; manage seed data directly in the console if needed.
 
 ---
 
