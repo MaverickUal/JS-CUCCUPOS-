@@ -14,7 +14,7 @@
  *   admin   -> owner/manager (full dashboard, menu + staff management)
  *   cashier -> takes orders and records cash at the counter
  * These values are what lives in `users/<uid>/role` in the database, and the
- * security rules in src/lib/firebase_structure.md validate against them.
+ * security rules in docs/database.rules.json validate against them.
  * @typedef {"cashier" | "admin"} Role
  */
 
