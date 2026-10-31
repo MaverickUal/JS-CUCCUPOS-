@@ -1,7 +1,4 @@
-/**
- * Client-side helpers for the simplified void workflow.
- * Only status helpers remain; the authoritative transaction is in src/lib/actions.js.
- */
+
 export const VOIDABLE_STATUSES = ["pending", "preparing", "ready"]
 export const MIN_REASON = 3
 export const MAX_REASON = 300

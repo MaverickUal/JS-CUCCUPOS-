@@ -34,15 +34,15 @@ function Progress({ status }) {
 
 export default function HistoryPage() {
   const { orders, currentUser, reorder } = useStore()
-  // Receipts and PDFs can include the cashier's name (the transaction record), but no
-  // customer-identifying field is ever printed.
+  
+  
   const navigate = useNavigate()
   const [receiptFor, setReceiptFor] = useState(null)
   const [voidForId, setVoidForId] = useState(null)
-  // The store already hands us newest-first; filtering preserves that order.
+  
   const mine = orders.filter((o) => o.customerId === currentUser?.id)
 
-  // Looked up by id so the dialog follows live updates instead of a stale copy.
+  
   const voidFor = mine.find((o) => o.id === voidForId) ?? null
 
   if (mine.length === 0)

@@ -19,9 +19,9 @@ export default function AdminCashiers() {
 
   const rows = useMemo(() => {
     const map = new Map()
-    // Every staff account is listed, not just cashiers. An administrator has to be
-    // able to see who holds which role, and an account with a missing or unrecognised
-    // role still needs to be visible so it can be fixed.
+    
+    
+    
     users.forEach((u) =>
       map.set(u.id, {
         id: u.id,
@@ -32,8 +32,8 @@ export default function AdminCashiers() {
         disabled: u.disabled === true,
       })
     )
-    // Orders placed by a since-removed account still surface, so the audit trail
-    // is never silently shortened.
+    
+    
     orders.forEach((o) => {
       const r = map.get(o.customerId) ?? { id: o.customerId, name: o.customerName, orders: 0, disabled: false }
       if (o.status !== "cancelled") r.orders += 1
@@ -99,8 +99,7 @@ export default function AdminCashiers() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {/* Admin rows are named in full so an Owner/Manager is never shown
-                        as if they were just another cashier. */}
+                    {}
                     <Badge variant={isOwner ? "default" : "tag"}>{roleLabel(r.role)}</Badge>
                   </TableCell>
                   <TableCell>{r.email ?? <Badge variant="secondary">No account</Badge>}</TableCell>

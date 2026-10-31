@@ -1,8 +1,4 @@
-/**
- * FIREBASE DATA LAYER.
- * All data is read from and written to Firebase RTDB via src/lib/actions.js.
- * State is kept in React and synced with Firebase using onValue listeners.
- */
+
 import { createContext, useContext, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { computeDiscount } from "@/lib/discounts"
@@ -26,8 +22,8 @@ export function StoreProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [authReady, setAuthReady] = useState(false)
 
-  // Menu is publicly readable, so it is always subscribed.
-  // Auth state drives the identity of the current user.
+  
+  
   useEffect(() => {
     const unsubMenu = getMenuItems((items) => {
       setMenu(items)
@@ -36,8 +32,8 @@ export function StoreProvider({ children }) {
 
     const unsubAuth = onAuthChange((user) => {
       setCurrentUser(user)
-      // Route guards wait on this so a hard refresh on a deep link doesn't get
-      // bounced to /login (and then to the home page) before auth has resolved.
+      
+      
       setAuthReady(true)
     })
 
@@ -47,9 +43,9 @@ export function StoreProvider({ children }) {
     }
   }, [])
 
-  // Orders and users are role-scoped, so they re-subscribe whenever the
-  // signed-in user changes. Admins get the full feed; a cashier only ever
-  // reads their own orders (query) and never the customer list.
+  
+  
+  
   const userId = currentUser?.id ?? null
   const isAdmin = currentUser?.role === "admin"
 
@@ -69,7 +65,7 @@ export function StoreProvider({ children }) {
       unsubOrders?.()
       unsubUsers?.()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [userId, isAdmin])
 
   const cartLines = useMemo(
@@ -83,14 +79,10 @@ export function StoreProvider({ children }) {
   const cartCount = cartLines.reduce((s, l) => s + l.qty, 0)
   const cartTotal = cartLines.reduce((s, l) => s + l.qty * l.item.price, 0)
 
-  /**
-   * Newest first, applied once here so every screen that reads `orders` gets the
-   * same order. The admin feed arrives grouped by customer (see flattenOrders in
-   * actions.js), so without this the board looks randomly sequenced.
-   */
+  
   const sortedOrders = useMemo(() => sortByCreatedAtDesc(orders), [orders])
 
-  /** Run an auth action and, on success, make its user the current one. */
+  
   const authenticate = async (action) => {
     const result = await action()
     if (result.success && result.data) {
@@ -110,8 +102,8 @@ export function StoreProvider({ children }) {
     setCart([])
   }
 
-  // Honour the `disabled` flag on an already-signed-in session: if an
-  // administrator disables this account while it is in use, sign it out.
+  
+  
   useEffect(() => {
     if (!currentUser?.id) return
     const unsub = subscribeUserProfile(currentUser.id, (profile) => {
@@ -123,7 +115,7 @@ export function StoreProvider({ children }) {
     return () => {
       unsub?.()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [currentUser?.id])
 
   const addToCart = (id) =>
@@ -157,7 +149,7 @@ export function StoreProvider({ children }) {
       return newCart
     })
 
-  /** Discount breakdown for the current cart. */
+  
   const previewDiscount = (type) =>
     computeDiscount(
       cartLines.map((l) => ({ category: l.item.category, qty: l.qty, price: l.item.price })),
@@ -167,8 +159,8 @@ export function StoreProvider({ children }) {
   const placeOrder = async (cashTendered, note, discountType = "none") => {
     if (!currentUser || cartLines.length === 0) return null
 
-    // The discount is recomputed from the cart here rather than accepted from the
-    // caller, so the persisted total always matches the line items.
+    
+    
     const breakdown = previewDiscount(discountType)
     const tendered = round2(cashTendered)
     const changeGiven = round2(tendered - breakdown.total)
@@ -198,7 +190,7 @@ export function StoreProvider({ children }) {
       paymentMethod: "Cash",
       cashTendered: tendered,
       changeGiven,
-      // New orders always start pending; the backend rules enforce it too.
+      
       status: "pending",
       createdAt: new Date().toISOString(),
       note: note || null,
@@ -238,10 +230,10 @@ export function StoreProvider({ children }) {
   }
 
 
-  // Void workflow. These go through Cloud Functions, never the RTDB SDK: the rules
-  // refuse client writes to the void fields. Each resolves to { success, message }
-  // like the other store actions. The orders listener delivers the new state, so
-  // nothing is patched locally.
+  
+  
+  
+  
   const voidResult = (res, okMessage) =>
     res.success
       ? { success: true, message: res.message || okMessage }

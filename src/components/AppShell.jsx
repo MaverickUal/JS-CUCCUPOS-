@@ -104,7 +104,7 @@ function TopSearch() {
 
 const SIDEBAR_KEY = "cuccupos.sidebar.expanded"
 
-/** Icon rail that expands to show labels. Shared by the desktop sidebar and the mobile drawer. */
+
 function SideNav({ nav, expanded, onToggle, onNavigate, closeIcon }) {
   const location = useLocation()
   const item = "flex h-11 w-full items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -152,7 +152,7 @@ function SideNav({ nav, expanded, onToggle, onNavigate, closeIcon }) {
           aria-label={label}
           aria-current={location.pathname === to ? "page" : undefined}
           onClick={(e) => {
-            // Auto-expand the rail when a nav item is clicked while collapsed.
+            
             if (!expanded && onToggle) onToggle()
             onNavigate?.(e)
           }}
@@ -168,7 +168,7 @@ function SideNav({ nav, expanded, onToggle, onNavigate, closeIcon }) {
   )
 }
 
-/** Shared layout for both roles: slim icon rail, top bar, full-height content. */
+
 function Shell({ variant }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -178,7 +178,7 @@ function Shell({ variant }) {
   })
   const [drawerOpen, setDrawerOpen] = useState(false)
   useEffect(() => {
-    try { localStorage.setItem(SIDEBAR_KEY, expanded ? "1" : "0") } catch { /* storage unavailable */ }
+    try { localStorage.setItem(SIDEBAR_KEY, expanded ? "1" : "0") } catch {  }
   }, [expanded])
   useEffect(() => {
     if (!drawerOpen) return
@@ -197,12 +197,12 @@ function Shell({ variant }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background print:block print:h-auto print:overflow-visible">
-      {/* Desktop sidebar: icon rail that expands to show labels */}
+      {}
       <aside className={cn("hidden shrink-0 flex-col gap-2 border-r bg-card px-3 py-5 transition-[width] duration-200 lg:flex print:hidden", expanded ? "w-60" : "w-[72px]")}>
         <SideNav nav={nav} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
       </aside>
 
-      {/* Mobile drawer */}
+      {}
       {drawerOpen && (
         <div className="fixed inset-0 z-50 lg:hidden print:hidden">
           <div className="absolute inset-0 bg-foreground/40" onClick={() => setDrawerOpen(false)} aria-hidden />
@@ -266,7 +266,7 @@ function Shell({ variant }) {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
+      {}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card lg:hidden print:hidden">
         {nav.map(({ to, label, icon: Icon }) => (
           <NavLink

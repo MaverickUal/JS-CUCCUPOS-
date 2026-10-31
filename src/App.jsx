@@ -13,13 +13,7 @@ import Reports from "@/pages/admin/Reports"
 
 const homeFor = (role) => (role === "admin" ? "/admin/dashboard" : "/order")
 
-/**
- * Shown while Firebase Auth decides whether anyone is signed in.
- *
- * Without this, a hard refresh on a deep link (e.g. /admin/cashiers) renders the
- * guards while currentUser is still null, so RequireRole sends you to /login and
- * PublicOnly then sends you to the home page — the deep link is lost.
- */
+
 function Waiting() {
   return (
     <div className="grid min-h-screen place-items-center bg-background">

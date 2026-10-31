@@ -44,11 +44,7 @@ export default function Dashboard() {
   const [cashierId, setCashierId] = useState(ALL)
   const range = useRange(sel)
 
-  /**
-   * Cashier filtering happens on `customerId`, never on the display name — two
-   * cashiers could share a name, and renaming an account must not merge their
-   * history.
-   */
+  
   const cashiers = useMemo(
     () =>
       users
@@ -63,7 +59,7 @@ export default function Dashboard() {
     [orders, cashierId]
   )
 
-  /** Totals for the selected window vs the immediately preceding window. */
+  
   const s = useMemo(() => {
     const span = range.to.getTime() - range.from.getTime()
     const prevFrom = new Date(range.from.getTime() - span)
@@ -102,8 +98,8 @@ export default function Dashboard() {
   )
   const top = useMemo(() => topItems(inRangeOrders, 5), [inRangeOrders])
 
-  // "Recent orders" is deliberately NOT date-filtered: it answers "what just
-  // happened", which must still work when today's range has no sales.
+  
+  
   const recent = scoped.slice(0, 6)
   const filtered = cashierId !== ALL
   const chartTitle = `Sales · ${range.label}`

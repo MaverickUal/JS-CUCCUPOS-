@@ -22,7 +22,7 @@ VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_MEASUREMENT_ID=
 VITE_FIREBASE_DATABASE_URL=
 ```
-Security rules, the data structure, and the seeding steps live in [`docs/firebase_structure.md`](docs/firebase_structure.md).
+Security rules, the data structure, and the seeding steps live in [`docs/DESIGN.md`](docs/DESIGN.md) (data model and security model sections); the deployed rules are in [`docs/database.rules.json`](docs/database.rules.json).
 
 ## Deploying the backend
 
@@ -75,8 +75,8 @@ A cashier PIN was scoped and then **deliberately left out**. A four-digit PIN ha
 salted server-side hash under Admin SDK, per-account lockout, and a rules change to
 lock the credential node — plus deployment to verify any of it. Since none of that could
 be tested here, shipping a UI shortcut would have meant shipping an untested
-credential. Email and password remain the only sign-in method. See "Outstanding issues"
-in `system_summary.md` for the design if it is picked up later.
+credential. Email and password remain the only sign-in method. See "Known gaps" in
+`docs/DESIGN.md` for the design if it is picked up later.
 
 ## Where the data lives
 Database and auth calls live in `src/services/*.services.js` and return
@@ -88,8 +88,9 @@ Pure logic lives in modules with no Firebase dependency: `stats.js` (date ranges
 bucketing, sorting), `discounts.js` (discount maths), `finance.js` (gross / net).
 These are what the test suite covers.
 
-Types are in `src/types.js` and double as the API contract. Zod schemas in
-`src/lib/schemas.js` recompute and reject any monetary value that doesn't reconcile.
+There is no shared types file; `CATEGORIES` is inlined in `src/pages/admin/Menu.jsx`
+and `src/pages/customer/Order.jsx`. Zod schemas in `src/lib/schemas.js` recompute and
+reject any monetary value that doesn't reconcile.
 
 ## Business rules in the UI
 - Cart quantity is clamped to **1–99**. It can be typed directly into the cart; Enter or leaving the field commits it, Escape reverts, and a cleared field never deletes the line. The trash icon removes an item.

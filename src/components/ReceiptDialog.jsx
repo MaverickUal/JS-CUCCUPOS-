@@ -12,47 +12,41 @@ import {
 } from "@/components/ui/dialog"
 import { peso } from "@/lib/format"
 import { buildReceipt, receiptFilename, SHOP_NAME } from "@/lib/receipt"
-/**
- * Prints and exports one transaction.
- *
- * Printing uses a dedicated stylesheet (`receipt.css`, loaded by index.html) that hides
- * everything except `.receipt-sheet`. So the printed output is this transaction alone,
- * with no nav, no buttons and no neighbouring rows — and printing mutates nothing.
- */
+
 export function ReceiptDialog({
   order,
   open,
   onOpenChange,
 }) {
   const [busy, setBusy] = useState(false)
-  // Held in a ref so the PDF path never needs the DOM node; the print path grabs it
-  // at click time, which is the only moment it is guaranteed to exist.
+  
+  
   const sheetRef = useRef(null)
 
   if (!order) return null
-  // Narrowed into a local so the closures below keep the non-null type.
+  
   const current = order
   const r = buildReceipt(current)
 
   function print() {
     if (!sheetRef.current) return
-    // Give the browser a frame to lay the sheet out before it snapshots it.
+    
     requestAnimationFrame(() => window.print())
   }
 
   async function downloadPdf() {
     setBusy(true)
     try {
-      // Imported lazily: jspdf is a few hundred KB and nothing else in the app needs it,
-      // so it should not sit in the initial bundle for staff who never export a receipt.
+      
+      
       const [{ jsPDF }, autoTableModule] = await Promise.all([
         import("jspdf"),
         import("jspdf-autotable"),
       ])
       const autoTable = autoTableModule.default
 
-      // 80mm is the common thermal receipt width. Tall/short page is chosen from the
-      // content so a long order isn't clipped onto a second page unexpectedly.
+      
+      
       const doc = new jsPDF({ unit: "mm", format: [80, 297] })
       const W = 80
       const pad = 5
@@ -112,7 +106,7 @@ export function ReceiptDialog({
       doc.save(receiptFilename(current))
       toast.success("Receipt downloaded")
     } catch (err) {
-      // Never claim a download that did not happen.
+      
       console.error(err)
       toast.error("Could not generate the PDF. Use Print and choose “Save as PDF” instead.")
     } finally {
@@ -130,8 +124,7 @@ export function ReceiptDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* This node is what the print stylesheet exposes. Everything else on the page
-            is hidden by `receipt.css` while printing. */}
+        {}
         <div ref={sheetRef} className="receipt-sheet max-h-[52vh] overflow-y-auto rounded-lg border bg-white p-5 text-slate-900">
           <ReceiptBody order={order} />
         </div>
@@ -152,7 +145,7 @@ export function ReceiptDialog({
   )
 }
 
-/** The on-screen receipt. Shared by the print dialog. */
+
 export function ReceiptBody({ order }) {
   const r = buildReceipt(order)
   return (

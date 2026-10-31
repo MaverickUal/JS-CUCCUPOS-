@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 
-/** Simple info box for a pending-void order (no audit trail). */
+
 export function VoidRequestInfo({ order }) {
   return (
     <div className="space-y-1 rounded-lg border p-2.5 text-sm">
@@ -14,7 +14,7 @@ export function VoidRequestInfo({ order }) {
   )
 }
 
-/** Previously the audit trail; now just shows if pending_void. */
+
 export function VoidAudit({ order }) {
   if (order?.status !== "pending_void") return null
   return <VoidRequestInfo order={order} />

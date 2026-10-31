@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 
-/** CuccuPOS mark from /public/cuccupos-logo.svg. */
+
 export function Logo({ tone = "light", className }) {
   const light = tone === "light"
   return (
