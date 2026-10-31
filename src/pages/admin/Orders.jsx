@@ -19,7 +19,7 @@ const NEXT = {
   preparing: { status: "ready", label: "Mark ready" },
   ready: { status: "completed", label: "Complete" },
 }
-/** Rows rendered before the table stops. Older orders remain searchable. */
+
 const CAP = 100
 
 const FILTERS = ["all", "pending", "pending_void", "preparing", "ready", "completed", "cancelled"]
@@ -33,7 +33,7 @@ export default function AdminOrders() {
   const [selectedId, setSelectedId] = useState(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [visible, setVisible] = useState(CAP)
-  // { id, mode: "approve" | "decline" } while a decision dialog is open.
+  
   const [decision, setDecision] = useState(null)
 
   const counts = useMemo(() => {
@@ -42,8 +42,8 @@ export default function AdminOrders() {
     return c
   }, [orders])
 
-  // `orders` arrives newest-first from the store, and filter() preserves that
-  // order. Re-sorting here would be redundant and risks diverging from the store.
+  
+  
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase()
     return orders.filter(
@@ -154,11 +154,7 @@ export default function AdminOrders() {
         </Table>
       </Card>}
 
-      {/*
-        Honest about the cap: sorting makes the newest-first rows the ones shown,
-        but older orders beyond the cap still exist. Search by order number or
-        cashier to reach them.
-      */}
+      {}
       {rows.length > visible && (
         <div className="flex justify-center">
           <Button variant="outline" size="sm" onClick={() => setVisible((v) => v + CAP)}>

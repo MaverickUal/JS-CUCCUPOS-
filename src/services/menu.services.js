@@ -19,10 +19,10 @@ const failWith = (error, fallback) => fail(error?.message || fallback)
 
 const refAt = (path) => ref(db, path)
 
-/** Snapshot value ({ id: record }) -> [{ id, ...record }]. */
+
 const valToList = (raw) => Object.entries(raw ?? {}).map(([id, value]) => ({ id, ...value }))
 
-/** Subscribe with onValue; a no-op unsubscribe if setup throws. */
+
 const safeSubscribe = (target, handler) => {
   try {
     return onValue(typeof target === "function" ? target() : target, handler)

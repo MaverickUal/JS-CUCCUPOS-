@@ -8,13 +8,7 @@ import { useStore } from "@/store/AppStore"
 import { orderNo } from "@/lib/format"
 import { useGuardedSubmit } from "@/lib/useGuardedSubmit"
 
-/**
- * Cashier asks the Owner/Manager to void an order.
- *
- * Confirms the request. Nothing is cancelled here. The `requestVoid` Cloud
- * Function moves the order to Pending Void and the orders listener updates
- * every screen, so success is reported only after the backend has accepted.
- */
+
 export function VoidRequestDialog({ order, open, onOpenChange }) {
   const { requestVoid } = useStore()
   const [confirming, setConfirming] = useState(false)

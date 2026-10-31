@@ -100,10 +100,7 @@ export default function Reports() {
         </p>
       ) : (
         <>
-          {/*
-            Gross, refunds and net are separate figures on purpose: a refund must
-            reduce net without rewriting what the customer originally paid.
-          */}
+          {}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Stat label="Gross sales" value={peso(r.t.gross)} hint="What customers were billed" />
             <Stat label="Net sales" value={peso(r.t.net)} hint="After discounts" />
@@ -169,7 +166,7 @@ export default function Reports() {
               <CardContent className="space-y-3">
                 {r.categories.length === 0 && <p className="text-sm text-muted-foreground">No sales in this period.</p>}
                 {r.categories.map((c) => {
-                  // Percentages are of gross, so they always add to 100%.
+                  
                   const pct = r.t.gross ? (c.revenue / r.t.gross) * 100 : 0
                   return (
                     <div key={c.category}>

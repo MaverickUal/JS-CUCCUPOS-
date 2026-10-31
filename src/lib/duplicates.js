@@ -1,7 +1,4 @@
-/**
- * Canonical form used for comparison. Not a display value -- use the item's own
- * `name` everywhere the user actually sees text.
- */
+
 export function normalizeMenuName(raw) {
   return raw
     .normalize("NFKC")
@@ -14,10 +11,7 @@ function key(name, category) {
   return `${normalizeMenuName(name)}::${category.trim().toLowerCase()}`
 }
 
-/**
- * Hard duplicates: same normalized name within the same category. These are what
- * `saveMenuItem` refuses to create.
- */
+
 export function findDuplicateGroups(items) {
   const buckets = new Map()
   for (const item of items) {
@@ -40,10 +34,7 @@ export function findDuplicateGroups(items) {
   return groups.sort((a, b) => a.label.localeCompare(b.label))
 }
 
-/**
- * Items that a new/edited name would collide with. `excludeId` is the item being
- * edited, so saving an unchanged product does not flag itself.
- */
+
 export function findConflictingMenuItems(
   items,
   name,
@@ -54,10 +45,7 @@ export function findConflictingMenuItems(
   return items.filter((i) => key(i.name, i.category) === target && i.id !== excludeId)
 }
 
-/**
- * Same normalized name, different categories. Advisory only -- shown to the admin
- * as something to review, never used to block a save.
- */
+
 export function findCrossCategoryNameMatches(items) {
   const buckets = new Map()
   for (const item of items) {

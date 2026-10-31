@@ -2,7 +2,7 @@ import { formatDateTime, orderNo, peso } from "@/lib/format"
 
 export const SHOP_NAME = "CuccuPOS"
 
-/** Human label for a discount type; "none" collapses to no line at all. */
+
 export function discountLabel(type) {
   switch (type) {
     case "pwd":
@@ -23,8 +23,8 @@ export function buildReceipt(order) {
     lineTotal: Number((Number(i.price ?? 0) * Number(i.qty ?? 0)).toFixed(2)),
   }))
 
-  // Orders predating the discount feature have no subtotal/discount fields. Their
-  // subtotal is just the total, and no discount line is shown.
+  
+  
   const subtotal = typeof order.subtotal === "number" ? order.subtotal : order.total
   const discountAmount = typeof order.discountAmount === "number" ? order.discountAmount : 0
 
@@ -47,16 +47,12 @@ export function buildReceipt(order) {
   }
 }
 
-/**
- * Download filename for the PDF. Built from the friendly order number so a cashier
- * filing receipts can find them, and stripped of anything a filesystem or a browser
- * download would object to (path separators, control characters, etc).
- */
+
 export function receiptFilename(order, extension = "pdf") {
   const raw = orderNo(order)
   const safe = raw.replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "")
   return `receipt-${safe || order.id || "order"}.${extension}`
 }
 
-/** Formats a peso amount for the narrow receipt layout. Reuses the shared formatter. */
+
 export const receiptMoney = (n) => peso(n)

@@ -13,10 +13,7 @@ export const SORT_OPTIONS = [
   { value: "price-desc", label: "Price: high to low" },
 ]
 
-/**
- * Search + filter state for the Order screen, kept in the URL (?q=&avail=&sort=)
- * so the top bar (in AppShell) and the menu grid (in Order) share it without props.
- */
+
 export function useMenuFilters() {
   const [params, setParams] = useSearchParams()
   const q = params.get("q") ?? ""
@@ -45,7 +42,7 @@ export function useMenuFilters() {
   }
 }
 
-/** Applies availability + sort. Search and category are applied by the caller. */
+
 export function applyMenuFilters(items, { avail, sort }) {
   let out = items
   if (avail === "available") out = out.filter((i) => i.available)

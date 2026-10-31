@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RANGE_OPTIONS, resolveRange, toDayInput, addDays, startOfDay } from "@/lib/stats"
 
-/** Defaults to the last 7 days, which is what the old hard-coded chart used. */
+
 export const defaultSelection = () => {
   const today = startOfDay(new Date())
   return { preset: "7d", from: toDayInput(today), to: toDayInput(today) }
@@ -14,11 +14,7 @@ export function useRange(sel) {
   return resolveRange(sel.preset, sel.from, sel.to)
 }
 
-/**
- * Period selector shared by the dashboard chart and the reports page.
- * "Today" switches the chart to hourly buckets; any other preset buckets by day,
- * and "Custom range" exposes from/to pickers so past dates can be inspected.
- */
+
 export function RangePicker({
   value,
   onChange,
@@ -29,8 +25,8 @@ export function RangePicker({
   const range = useRange(value)
 
   const setPreset = (preset) => {
-    // Seed the custom pickers with something sensible so switching to Custom
-    // never shows an empty form.
+    
+    
     if (preset === "custom" && (!value.from || !value.to)) {
       onChange({ preset, from: toDayInput(addDays(today, -6)), to: toDayInput(today) })
       return
@@ -69,7 +65,7 @@ export function RangePicker({
               value={value.from}
               onChange={(e) => {
                 const nextFrom = e.target.value
-                // Never let "From" move past "To": push "To" forward with it.
+                
                 const nextTo = value.to && nextFrom && nextFrom > value.to ? nextFrom : value.to
                 onChange({ ...value, from: nextFrom, to: nextTo })
               }}
@@ -85,7 +81,7 @@ export function RangePicker({
               value={value.to}
               onChange={(e) => {
                 const nextTo = e.target.value
-                // Never let "To" move before "From": pull "From" back with it.
+                
                 const nextFrom = value.from && nextTo && nextTo < value.from ? nextTo : value.from
                 onChange({ ...value, from: nextFrom, to: nextTo })
               }}

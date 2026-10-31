@@ -5,12 +5,7 @@ import { DISCOUNT_LABELS, DISCOUNT_TYPES } from "@/lib/discounts"
 import { peso } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-/**
- * Concession selector for the checkout dialog.
- *
- * Eligibility is asserted by the cashier, not verified here — see the unresolved
- * assumptions at the top of src/lib/discounts.js. No ID capture is invented.
- */
+
 export function DiscountPicker({
   value,
   onChange,

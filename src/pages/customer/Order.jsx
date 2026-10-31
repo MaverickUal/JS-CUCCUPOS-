@@ -17,16 +17,13 @@ import { applyMenuFilters, useMenuFilters } from "@/lib/useMenuFilters"
 import { CATEGORIES } from "@/types"
 const FILTERS = ["All", ...CATEGORIES]
 
-/** Common peso notes/coins, plus an "exact" shortcut, to save the cashier typing. */
+
 const QUICK_TENDER = [20, 50, 100, 200, 500, 1000]
 
-/** Quick-add notes for the kitchen. */
+
 const NOTE_OPTIONS = ["Less Ice", "No Sugar", "50% Sugar", "Extra Shot (+₱20)", "Pearls (+₱15)"]
 
-/**
- * Cash tendered, parsed and compared with what's payable. Derived in one place so
- * the cart panel and the checkout dialog can never disagree about the change.
- */
+
 function useTender(tenderRaw, total) {
   return useMemo(() => {
     const amount = round2(parseFloat(tenderRaw) || 0)
@@ -72,7 +69,7 @@ function CashTendered({
   )
 }
 
-/** Subtotal → discount → payable. Shown wherever a total appears at checkout. */
+
 function MoneySummary({
   breakdown,
   change,
@@ -104,7 +101,7 @@ function MoneySummary({
   )
 }
 
-/** Inline illustration for the empty order: a steaming cup on a saucer. */
+
 function EmptyOrderArt() {
   return (
     <svg viewBox="0 0 120 120" className="size-28" role="img" aria-label="Empty cup" fill="none">
@@ -205,7 +202,7 @@ function CheckoutDialog({
 
   async function pay() {
     setPhase("processing")
-    // Mock payment delay, then place order via Firebase
+    
     await new Promise((r) => setTimeout(r, 1400))
     const order = await placeOrder(tender.amount, note.trim() || undefined, discountType)
     if (order) { setPlaced(order); setPhase("done") } else { setPhase("review"); toast.error("Order could not be placed. Please try again.") }
@@ -313,9 +310,9 @@ export default function OrderPage() {
     return applyMenuFilters(matched, filters)
   }, [menu, filters.q, filters.avail, filters.sort, category])
 
-  // Reset the tender and discount whenever the cart empties — the store clears the
-  // cart after a successful order, so this wipes stale values between sales.
-  // Cancelling the dialog deliberately keeps both.
+  
+  
+  
   useEffect(() => {
     if (cartCount === 0) {
       setTenderRaw("")
@@ -387,10 +384,7 @@ export default function OrderPage() {
         )}
       </div>
 
-      {/*
-        The desktop and mobile panels both render a live tender field. They are
-        separate instances so each keeps its own input focus.
-      */}
+      {}
       <aside className="hidden w-[22rem] shrink-0 border-l xl:block">
         <CartPanel
           tenderRaw={tenderRaw}

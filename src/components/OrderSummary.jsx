@@ -1,7 +1,7 @@
 import { StatusBadge } from "@/components/StatusBadge"
 import { formatDateTime, orderNo, peso } from "@/lib/format"
 
-/** Order number, status, items and total. Shared by the void dialogs. */
+
 export function OrderSummary({ order }) {
   return (
     <div className="space-y-2 rounded-xl bg-muted p-3 text-sm">

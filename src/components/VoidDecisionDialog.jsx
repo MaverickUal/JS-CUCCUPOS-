@@ -9,13 +9,7 @@ import { useStore } from "@/store/AppStore"
 import { orderNo } from "@/lib/format"
 import { useGuardedSubmit } from "@/lib/useGuardedSubmit"
 
-/**
- * Owner/Manager confirms an Approve or Decline decision.
- *
- * `mode` is "approve" or "decline". Declining needs a reason. The decision is
- * made by the backend, which re-checks the admin role and that the request is
- * still pending; this dialog is a confirmation step, not the security boundary.
- */
+
 export function VoidDecisionDialog({ order, mode, open, onOpenChange }) {
   const { approveVoid, declineVoid } = useStore()
   const { busy, error, setError, run } = useGuardedSubmit()

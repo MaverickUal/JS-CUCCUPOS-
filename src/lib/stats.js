@@ -16,9 +16,9 @@ export const addDays = (d, n) => {
 export const validOrders = (orders) => orders.filter((o) => o.status !== "cancelled")
 export const sumTotal = (orders) => orders.reduce((s, o) => s + o.total, 0)
 
-// ---------------------------------------------------------------------------
-// Date range
-// ---------------------------------------------------------------------------
+
+
+
 
 export const RANGE_OPTIONS = [
   { value: "today", label: "Today" },
@@ -27,12 +27,7 @@ export const RANGE_OPTIONS = [
   { value: "custom", label: "Custom range" },
 ]
 
-/**
- * Parse a `yyyy-mm-dd` input value as a *local* date (not UTC midnight).
- *
- * Rejects impossible dates instead of letting JS roll them over: `new Date(2026, 1, 31)`
- * silently becomes 3 Mar, which would apply the wrong day with no error shown.
- */
+
 export function parseDayInput(value) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
   if (!m) return null
@@ -40,7 +35,7 @@ export function parseDayInput(value) {
   const mo = Number(m[2]) - 1
   const d = Number(m[3])
   const date = new Date(y, mo, d)
-  // Round-trip check catches overflow like Feb 31 -> Mar 3.
+  
   if (date.getFullYear() !== y || date.getMonth() !== mo || date.getDate() !== d) return null
   return date
 }
@@ -64,10 +59,10 @@ export function resolveRange(preset, fromRaw, toRaw) {
     return { preset, from: addDays(today, -29), to: now, hourly: false, label: "Last 30 days" }
   }
 
-  // Custom: fall back to the last 7 days when a bound is missing or invalid.
+  
   let from = parseDayInput(fromRaw ?? "") ?? addDays(today, -6)
   let to = parseDayInput(toRaw ?? "") ?? today
-  if (from > to) [from, to] = [to, from] // tolerate a reversed pick
+  if (from > to) [from, to] = [to, from] 
 
   const singleDay = from.getTime() === to.getTime()
   const isToday = to.getTime() === today.getTime()
@@ -81,35 +76,21 @@ export function resolveRange(preset, fromRaw, toRaw) {
   }
 }
 
-/**
- * Orders whose creation time falls inside the range.
- *
- * The lower bound is inclusive, which is what makes a single-day custom range
- * actually include that day. Orders with a missing or unparseable `createdAt`
- * are dropped rather than silently landing at epoch 0.
- */
+
 export const inRange = (orders, range) =>
   orders.filter((o) => {
     const t = timeOf(o)
     return t !== null && t >= range.from.getTime() && t <= range.to.getTime()
   })
 
-/**
- * Epoch millis for an order's creation time, or null when it is missing/invalid.
- *
- * Comparisons go through this rather than string comparison of the ISO text, so
- * a hand-edited or oddly-formatted timestamp can't sort or filter incorrectly.
- */
+
 export function timeOf(o) {
   if (o.createdAt === null || o.createdAt === undefined) return null
   const t = o.createdAt instanceof Date ? o.createdAt.getTime() : Date.parse(String(o.createdAt))
   return Number.isFinite(t) ? t : null
 }
 
-/**
- * Newest first. Orders with no usable timestamp sink to the bottom instead of
- * jumping to 1970 and displacing real history.
- */
+
 export function sortByCreatedAtDesc(orders) {
   return [...orders].sort((a, b) => {
     const ta = timeOf(a)
@@ -121,11 +102,7 @@ export function sortByCreatedAtDesc(orders) {
   })
 }
 
-/**
- * Time series for the chosen range: hourly buckets for today, daily otherwise.
- * Empty buckets are kept so quiet periods show as real zeroes instead of the
- * axis silently compressing.
- */
+
 export function seriesFor(orders, range) {
   const valid = validOrders(inRange(orders, range))
   const out = []
@@ -138,8 +115,8 @@ export function seriesFor(orders, range) {
       from.setHours(h, 0, 0, 0)
       const to = new Date(from)
       to.setHours(h + 1, 0, 0, 0)
-      // Half-open [from, to): an order at exactly 09:00:00 belongs to the 9am
-      // bucket, not the 8am one.
+      
+      
       const bucket = valid.filter((o) => {
         const t = timeOf(o)
         return t !== null && t >= from.getTime() && t < to.getTime()
@@ -163,8 +140,8 @@ export function seriesFor(orders, range) {
   while (cursor <= last) {
     const from = new Date(cursor)
     const to = addDays(from, 1)
-    // Half-open [from, to) so a midnight order lands in its own day exactly once,
-    // never in both the previous day and this one.
+    
+    
     const bucket = valid.filter((o) => {
       const t = timeOf(o)
       return t !== null && t >= from.getTime() && t < to.getTime()
@@ -181,9 +158,9 @@ export function seriesFor(orders, range) {
   return out
 }
 
-// ---------------------------------------------------------------------------
-// Aggregates
-// ---------------------------------------------------------------------------
+
+
+
 
 export function topItems(orders, limit = 5) {
   const m = new Map()
