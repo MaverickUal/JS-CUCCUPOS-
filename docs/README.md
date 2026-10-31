@@ -88,8 +88,9 @@ Pure logic lives in modules with no Firebase dependency: `stats.js` (date ranges
 bucketing, sorting), `discounts.js` (discount maths), `finance.js` (gross / net).
 These are what the test suite covers.
 
-Types are in `src/types.js` and double as the API contract. Zod schemas in
-`src/lib/schemas.js` recompute and reject any monetary value that doesn't reconcile.
+There is no shared types file; `CATEGORIES` is inlined in `src/pages/admin/Menu.jsx`
+and `src/pages/customer/Order.jsx`. Zod schemas in `src/lib/schemas.js` recompute and
+reject any monetary value that doesn't reconcile.
 
 ## Business rules in the UI
 - Cart quantity is clamped to **1–99**. It can be typed directly into the cart; Enter or leaving the field commits it, Escape reverts, and a cleared field never deletes the line. The trash icon removes an item.

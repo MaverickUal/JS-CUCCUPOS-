@@ -119,7 +119,7 @@ JS-CUCCUPOS-/
 ├── src/
 │   ├── App.jsx                # Route table + role guards
 │   ├── main.jsx               # Router + StoreProvider + Toaster mount
-│   ├── types.js               # JSDoc typedefs + CATEGORIES export
+│   (no types.js — CATEGORIES inlined in pages)
 │   ├── index.css              # Tailwind layers + CSS variables
 │   ├── components/            # Shared UI
 │   ├── lib/                   # Pure logic + hooks
@@ -385,7 +385,7 @@ No payment gateway, analytics SDK, or other third-party APIs. `measurementId` pr
 - **Services** — `src/services/*.services.js`: all Firebase calls; mutations return `{success, message, data}`.
 - **Role-scoped subscriptions** — AppStore listens to different DB paths by role.
 - **RangePicker** — shared period picker (Dashboard + Reports); hourly/daily buckets.
-- **CATEGORIES** — unified export in `src/types.js`: Coffee, Milk Tea, Frappe, Others.
+- **CATEGORIES** — inlined in `src/pages/admin/Menu.jsx` and `src/pages/customer/Order.jsx`: Coffee, Milk Tea, Frappe, Others.
 - **QuantityStepper** — +/- and typed quantity; clamps 1–99.
 - **Order number** — client-generated `ORD-…` (`makeDisplayId`); `orderNo()` in format.js.
 - **Cash only** — single payment method; records `cashTendered`/`changeGiven`.

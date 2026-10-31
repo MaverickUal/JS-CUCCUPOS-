@@ -14,7 +14,7 @@ import { MenuImage } from "@/components/MenuImage"
 import { useStore } from "@/store/AppStore"
 import { peso } from "@/lib/format"
 import { findConflictingMenuItems, findDuplicateGroups } from "@/lib/duplicates"
-import { CATEGORIES } from "@/types"
+const CATEGORIES = ["Coffee", "Milk Tea", "Frappe", "Others"]
 
 
 function ItemForm({ item, onDone }) {

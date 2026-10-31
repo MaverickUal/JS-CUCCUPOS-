@@ -360,7 +360,7 @@ New accounts register at `/register` with the `cashier` role (note: the `/regist
 8. **`parseDayInput` rejects impossible dates deliberately.** Re-adding plain `new Date(y, m, d)` reintroduces the silent Feb 31 → Mar 3 bug.
 9. **The rules in the repo may be behind what's deployed.** Compare `docs/database.rules.json` with the Firebase console before debugging an access error.
 10. **Path alias** — `@/` maps to `src/` (declared in both `vite.config.js` and `jsconfig.json`).
-11. **Types are the contract** — `src/types.js` mirrors the database exactly. `Order.items` is a `Record<string, OrderItem>`, not an array.
+11. **CATEGORIES** are inlined in `src/pages/admin/Menu.jsx` and `src/pages/customer/Order.jsx` (`["Coffee", "Milk Tea", "Frappe", "Others"]`). There is no shared types file.
 12. **Formatting** — always through `lib/format.js` (`peso`, `formatDateTime`, `formatDate`, `orderNo`). Raw `toLocaleString` calls in JSX are a smell.
 13. **Styling** — Tailwind utilities plus `cn()` for conditional classes. Theme colours are CSS variables at the top of `index.css`; there is no dark mode.
 14. **Icons** — lucide-react only.
@@ -394,7 +394,7 @@ Recent batch changes (confirmed by diff + docs):
 | 1 | `src/pages/auth/Register.jsx` | Deleted (62 lines); no route existed |
 | 2 | `Login.jsx` / `App.jsx` | `/register` link removed |
 | 5 | `pages/admin/Orders.jsx` | Historical price added (`peso(i.price)`) |
-| 6 | `pages/admin/Menu.jsx` / `types.js` | `CATEGORIES` unified export; used in Menu + Order filters |
+| 6 | `pages/admin/Menu.jsx` / `pages/customer/Order.jsx` | `CATEGORIES` inlined; used in Menu + Order filters |
 | 8 | `pages/customer/Order.jsx` | Quick customization buttons above note; `cartQtyMap` + `Badge` on cards |
 | 9 | `components/ReceiptDialog.jsx` + `lib/receipt.js` | Filter `qty > 0`; guard `cashTendered`/`changeGiven` > 0 (stray ₱0 fix) |
 | 10 | `pages/admin/Dashboard.jsx` | `Area type="linear"` |
@@ -440,7 +440,7 @@ A: Yes — file deleted; route never existed in `App.jsx`. Staff accounts are cr
 - **Services** (`src/services/*.services.js`): every Firebase Auth / RTDB call; mutations return `{success, message, data}`; reads are live subscriptions or one-shot promises.
 - **Role-scoped subscriptions**: `AppStore` listens to different DB paths based on `currentUser.role` (admin = `/orders` + `/users`; cashier = `/orders/<uid>`).
 - **RangePicker** (`src/components/RangePicker.jsx`): shared period picker between Dashboard and Reports; switches bucket mode (hourly/daily) based on selection.
-- **CATEGORIES** (`src/types.js`): unified export; used in `Menu.jsx` + `Order.jsx` filters.
+- **CATEGORIES**: inlined in `Menu.jsx` + `Order.jsx` filters.
 - **QuantityStepper** (`src/components/QuantityStepper.jsx`): `+` / `-` and typed quantity; clamps 1–99.
 - **Order number**: client-generated (`ORD-MVC26YJ9`); `orderNo()` in `format.js`.
 - **Cash only**: one payment method (`cashTendered`, `changeGiven`).
@@ -457,7 +457,7 @@ A: Yes — file deleted; route never existed in `App.jsx`. Staff accounts are cr
 src/
   main.jsx                    # Router mount + StoreProvider + Toaster
   App.jsx                     # Route table + role guards
-  types.js                    # Shared contracts / DB shape (exports CATEGORIES)
+  (no types.js — CATEGORIES inlined in pages)
   index.css                   # Tailwind layers + olive/cream CSS variables
 
   store/

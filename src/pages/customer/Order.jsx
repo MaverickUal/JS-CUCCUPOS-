@@ -14,7 +14,7 @@ import { orderNo, peso, round2 } from "@/lib/format"
 import { changeFor } from "@/lib/discounts"
 import { cn } from "@/lib/utils"
 import { applyMenuFilters, useMenuFilters } from "@/lib/useMenuFilters"
-import { CATEGORIES } from "@/types"
+const CATEGORIES = ["Coffee", "Milk Tea", "Frappe", "Others"]
 const FILTERS = ["All", ...CATEGORIES]
 
 
