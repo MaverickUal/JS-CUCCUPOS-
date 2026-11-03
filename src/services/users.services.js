@@ -1,5 +1,5 @@
 import { db, auth } from "@/lib/firebase"
-import { ref, get, onValue, update } from "firebase/database"
+import { ref, get, onValue, set } from "firebase/database"
 
 const usersRef = ref(db, "users")
 
@@ -65,7 +65,9 @@ export const setCashierEnabled = async (uid, enabled) => {
       return fail("This account is an Owner/Manager. Use a dedicated administrator flow for those.")
     }
 
-    await update(profileRef(uid), {
+    const target = targetSnap.val() ?? {}
+    await set(profileRef(uid), {
+      ...target,
       disabled: !enabled,
       reenabledAt: enabled ? new Date().toISOString() : null,
     })
