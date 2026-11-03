@@ -34,3 +34,5 @@ functions/node_modules/
 
 # Local tooling / skills
 .claude/
+
+.firebaserc
