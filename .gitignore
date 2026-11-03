@@ -31,3 +31,8 @@ coverage/
 # Firebase Functions build output
 functions/lib/
 functions/node_modules/
+
+# Local tooling / skills
+.claude/
+
+.firebaserc

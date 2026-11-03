@@ -10688,9 +10688,6 @@ export default function AdminCashiers() {
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input aria-label="Search cashiers" className="pl-9" placeholder="Search name or email…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <span className="text-xs text-muted-foreground">
-            Cashier accounts are provisioned manually in the Firebase Console. See MANUAL_SETUP_AND_DEPLOYMENT.md.
-          </span>
         </div>
       </div>
 
@@ -10753,16 +10750,6 @@ export default function AdminCashiers() {
         </Table>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Disabling a cashier blocks sign-in but keeps their orders and refunds intact for the audit trail.
-        You can't disable your own account, so the shop always keeps an administrator. Accounts are
-        managed by role, not deleted — promoting someone to Owner/Manager is a deliberate act done in
-        the Firebase console, not from this screen.
-      </p>
-
-      <p className="text-xs text-muted-foreground">
-        Disabling uses the RTDB profile flag only. It blocks access to CuccuPOS but does not disable the underlying Firebase Authentication account.
-      </p>
     </div>
   )
 }
@@ -14624,7 +14611,6 @@ This file is the master documentation for CuccuPOS. It consolidates the design s
 
 ## Part 1 — Design system
 
-Built with the **ui-ux-pro-max** skill. All rules below come from its searchable database.
 
 ### Product type
 - **Primary**: POS / Retail / Service (coffee shop)

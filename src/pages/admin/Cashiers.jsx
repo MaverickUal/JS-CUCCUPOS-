@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Search } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +16,11 @@ import { roleLabel } from "@/lib/roles"
 export default function AdminCashiers() {
   const { users, orders, currentUser, setCashierEnabled } = useStore()
   const [search, setSearch] = useState("")
+  const [disabledOverrides, setDisabledOverrides] = useState({})
+
+  useEffect(() => {
+    setDisabledOverrides({})
+  }, [users])
 
   const rows = useMemo(() => {
     const map = new Map()
@@ -29,7 +34,7 @@ export default function AdminCashiers() {
         email: u.email,
         role: u.role,
         orders: 0,
-        disabled: u.disabled === true,
+        disabled: disabledOverrides[u.id] ?? (u.disabled === true),
       })
     )
     
@@ -49,7 +54,7 @@ export default function AdminCashiers() {
           roleLabel(a.role).localeCompare(roleLabel(b.role)) ||
           b.orders - a.orders
       )
-  }, [users, orders, search])
+  }, [users, orders, search, disabledOverrides])
 
   return (
     <div className="space-y-5 px-3 sm:px-0">
@@ -64,9 +69,7 @@ export default function AdminCashiers() {
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input aria-label="Search cashiers" className="pl-9" placeholder="Search name or email…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <span className="text-xs text-muted-foreground">
-            Cashier accounts are provisioned manually in the Firebase Console. See MANUAL_SETUP_AND_DEPLOYMENT.md.
-          </span>
+          <span className="text-xs text-muted-foreground" />
         </div>
       </div>
 
@@ -109,11 +112,24 @@ export default function AdminCashiers() {
                   <TableCell className="text-right">{r.orders}</TableCell>
                   <TableCell className="text-muted-foreground">{r.last ? formatDate(r.last) : "No orders yet"}</TableCell>
                   <TableCell className="text-right">
-                    {r.email && !isOwner ? (
+                    {!isOwner && !isSelf ? (
                       <Switch
                         checked={!r.disabled}
                         disabled={isSelf}
-                        onCheckedChange={(on) => setCashierEnabled(r.id, on)}
+                        onCheckedChange={async (on) => {
+                          setDisabledOverrides((prev) => ({ ...prev, [r.id]: !on }))
+                          const res = await setCashierEnabled(r.id, on)
+                          if (res && res.success === false) {
+                            setDisabledOverrides((prev) => {
+                              const next = { ...prev }
+                              delete next[r.id]
+                              return next
+                            })
+                            toast.error(res.message || "Could not update access.")
+                          } else if (res && res.success) {
+                            toast.success(res.message || "Access updated.")
+                          }
+                        }}
                         aria-label={`${r.disabled ? "Re-enable" : "Disable"} ${r.name}`}
                       />
                     ) : (
@@ -129,16 +145,7 @@ export default function AdminCashiers() {
         </Table>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Disabling a cashier blocks sign-in but keeps their orders and refunds intact for the audit trail.
-        You can't disable your own account, so the shop always keeps an administrator. Accounts are
-        managed by role, not deleted — promoting someone to Owner/Manager is a deliberate act done in
-        the Firebase console, not from this screen.
-      </p>
 
-      <p className="text-xs text-muted-foreground">
-        Disabling uses the RTDB profile flag only. It blocks access to CuccuPOS but does not disable the underlying Firebase Authentication account.
-      </p>
     </div>
   )
 }
