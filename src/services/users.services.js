@@ -66,7 +66,7 @@ export const setCashierEnabled = async (uid, enabled) => {
     }
 
     await update(profileRef(uid), {
-      disabled: enabled,
+      disabled: !enabled,
       reenabledAt: enabled ? new Date().toISOString() : null,
     })
     return ok(enabled ? "Account re-enabled" : "Account disabled")
