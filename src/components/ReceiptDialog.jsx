@@ -47,9 +47,9 @@ export function ReceiptDialog({
 
       
       
-      const doc = new jsPDF({ unit: "mm", format: [80, 297] })
-      const W = 80
-      const pad = 5
+      const doc = new jsPDF({ unit: "mm", format: "a5" })
+      const W = 148
+      const pad = 10
       let y = 10
 
       doc.setFont("helvetica", "bold")
@@ -83,9 +83,9 @@ export function ReceiptDialog({
         head: [["Item", "Qty", "Amount"]],
         headStyles: { fontStyle: "bold" },
         columnStyles: {
-          0: { cellWidth: 34 },
-          1: { cellWidth: 9, halign: "right" },
-          2: { cellWidth: 27, halign: "right" },
+          0: { cellWidth: 70 },
+          1: { cellWidth: 14, halign: "right" },
+          2: { cellWidth: 34, halign: "right" },
         },
         body: r.lines.map((l) => [l.name, String(l.qty), peso(l.lineTotal)]),
       })
@@ -98,6 +98,18 @@ export function ReceiptDialog({
       line("Payment", r.paymentMethod)
       if (typeof r.cashTendered === "number" && r.cashTendered > 0) line("Cash tendered", peso(r.cashTendered))
       if (typeof r.changeGiven === "number" && r.changeGiven > 0) line("Change given", peso(r.changeGiven))
+
+      if (r.note) {
+        y += 2
+        doc.setFontSize(7.5)
+        doc.setFont("helvetica", "bold")
+        doc.text("Note", pad, y)
+        y += 4
+        doc.setFont("helvetica", "normal")
+        const noteLines = doc.splitTextToSize(String(r.note), W - pad * 2)
+        doc.text(noteLines, pad, y)
+        y += noteLines.length * 4 + 2
+      }
 
       y += 5
       doc.setFontSize(6.5)
@@ -197,6 +209,13 @@ export function ReceiptBody({ order }) {
           <Row label="Change given" value={peso(r.changeGiven)} />
         )}
       </dl>
+
+      {r.note && (
+        <div className="mt-2 border-t border-slate-300 pt-2">
+          <p className="text-[10px] font-bold uppercase">Note</p>
+          <p className="text-[11px]">{r.note}</p>
+        </div>
+      )}
 
       <p className="mt-3 text-center text-[10px]">Thank you! Please come again.</p>
     </div>
