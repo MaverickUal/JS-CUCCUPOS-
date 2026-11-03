@@ -65,12 +65,8 @@ export const setCashierEnabled = async (uid, enabled) => {
       return fail("This account is an Owner/Manager. Use a dedicated administrator flow for those.")
     }
 
-    const target = targetSnap.val() ?? {}
-    await set(profileRef(uid), {
-      ...target,
-      disabled: !enabled,
-      reenabledAt: enabled ? new Date().toISOString() : null,
-    })
+    await set(ref(db, `users/${uid}/disabled`), !enabled)
+    await set(ref(db, `users/${uid}/reenabledAt`), enabled ? new Date().toISOString() : null)
     return ok(enabled ? "Account re-enabled" : "Account disabled")
   } catch (error) {
     return failWith(error, "Could not update the account.")
