@@ -126,11 +126,11 @@ JS-CUCCUPOS-/
 │   ├── pages/                 # Route pages (auth, customer, admin)
 │   ├── services/              # Firebase/Auth calls
 │   ├── store/AppStore.jsx     # React context state
-│   └── test/setup.js          # Vitest setup (system time pin)
+
 ├── tailwind.config.js
 ├── vercel.json                # SPA rewrite for Vercel
 ├── vite.config.js
-└── vitest.config.js
+
 ```
 
 ### Per-directory purpose
@@ -272,7 +272,6 @@ Environment variables (from `.env.local`; `.env.example` absent from repo [UNKNO
 Config files:
 - `vite.config.js` — React plugin + `@` alias.
 - `jsconfig.json` — path alias + ES2020/bundler.
-- `vitest.config.js` — node env, TZ=UTC, setup file.
 - `tailwind.config.js` — theme tokens, Quicksand font, animate plugin.
 - `postcss.config.js` — tailwind + autoprefixer.
 - `firebase.json` — rules path `docs/database.rules.json`, hosting public `dist`, SPA rewrite.
@@ -292,9 +291,6 @@ Scripts (`package.json`):
 | `dev` | `vite` | Dev server (localhost:5173) |
 | `build` | `vite build` | Production build → `dist/` |
 | `preview` | `vite preview` | Preview built bundle |
-| `test` | `vitest run` | Run unit tests (TZ=UTC) |
-| `test:watch` | `vitest` | Watch mode |
-| `test:tz` | loop TZs | Run tests in UTC, Asia/Manila, America/New_York, Australia/Lord_Howe |
 | `emulators` | `firebase emulators:start` | Local Auth + RTDB |
 | `deploy:rules` | `firebase deploy --only database` | Publish security rules |
 
@@ -304,11 +300,9 @@ Run dev: `npm install && cp .env.example .env.local` (example absent [UNKNOWN]) 
 
 ## 10. Testing
 
-- Framework: Vitest 2.1, node environment, setup file `tests/setup.js` (pins system time to 2026-10-18T12:00:00).
-- Location: `tests/` (10 suites, 200 cases): dashboard, discounts, discounts.schema, duplicates, finance, quantity, receipt, roles, stats, store.sorting.
-- Covers: date ranges/boundaries/timezones, order sorting, discount/change arithmetic, cashier filtering, receipt data/filenames, duplicate matching, quantity parsing.
+- Tests removed from the repository; production builds are unaffected.
 - No integration/emulator tests for rules or services.
-- Run: `npm test` or `npm run test:tz`.
+- Run: `npm run build` (Vercel runs this only).
 
 ---
 

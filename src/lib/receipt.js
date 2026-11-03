@@ -44,6 +44,7 @@ export function buildReceipt(order) {
     paymentMethod: order.paymentMethod,
     cashTendered: order.cashTendered,
     changeGiven: order.changeGiven,
+    note: order.note ?? null,
   }
 }
 

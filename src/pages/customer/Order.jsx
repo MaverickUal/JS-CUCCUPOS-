@@ -21,7 +21,7 @@ const FILTERS = ["All", ...CATEGORIES]
 const QUICK_TENDER = [20, 50, 100, 200, 500, 1000]
 
 
-const NOTE_OPTIONS = ["Less Ice", "No Sugar", "50% Sugar", "Extra Shot (+₱20)", "Pearls (+₱15)"]
+const NOTE_OPTIONS = ["Less Ice", "No Sugar", "50% Sugar"]
 
 
 function useTender(tenderRaw, total) {

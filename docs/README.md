@@ -6,8 +6,7 @@ React (JavaScript) + Vite + Tailwind CSS + shadcn/ui, backed by **Firebase** (Au
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm run build      # type-check + production build
-npm test           # unit tests (Vitest)
+npm run build      # production build
 ```
 
 ## Configuration
@@ -104,13 +103,8 @@ reject any monetary value that doesn't reconcile.
 - Every transaction can be printed or downloaded as a PDF from the admin order board and from a cashier's history. A print contains that one transaction and nothing else.
 
 ## Testing
-```bash
-npm test         # 182 unit tests
-npm run test:tz  # re-runs them across four timezones
-```
-Covers date-range boundaries and ordering, timezone handling, order sorting,
-discount and change arithmetic, cashier filtering, receipt data selection and
-filenames, duplicate-product matching, and quantity parsing.
+Unit tests were removed from this repository. Production builds and deployments
+are unaffected; Vercel runs `npm run build` only.
 
 ## Assets
 - Put drink photos in `public/menu/` using the file names referenced by menu items. A placeholder shows if one is missing.

@@ -41,6 +41,7 @@
 
   /* Chrome/Edge add headers and footers by default. */
   @page {
+    size: A5;
     margin: 10mm;
   }
 }

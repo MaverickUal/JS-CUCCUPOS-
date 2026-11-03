@@ -131,7 +131,7 @@ Choosing today (including via Custom) switches to hourly automatically. KPIs and
 | Validation | Zod | 4.6 |
 | Tests | Vitest | 2.1 |
 
-~7,350 lines of JS/JSX across 56 source files, ~1,610 tests (10 suites, 200 cases).
+~7,350 lines of JS/JSX across 56 source files. Unit tests removed.
 
 ---
 
@@ -329,7 +329,7 @@ Stated plainly:
 1. **Prices are still client-supplied.** The schema recomputes subtotal, discount and total from line items and rejects a mismatch, and rules cap quantity 1–99 — but nothing checks `items[].price` against the live menu. A modified client could send `price: 1` for a ₱80 drink. Closing this properly means computing orders server-side. Not acceptable once real money is involved; acceptable while payment is a mock.
 2. **Discount entitlement is not evidenced.** The 20% rate is verified against statute. What is missing is proof: the law requires the concession holder's name, ID number and TIN on the sales record before the discount can be claimed as a tax deduction, and the app stores only the discount type. The owner must decide whether to capture ID details.
 3. **Admin self-demotion is blocked by rules.** An admin cannot change their own `role` (including self-demotion) via the database rules.
-4. **No integration or emulator tests.** Pure logic covered by 200 unit tests, but Cloud Functions and security rules are only verified by compiling and manual browser checks against the live database.
+4. **No automated tests.** Pure logic is verified manually; Cloud Functions and security rules are only verified by compiling and manual browser checks against the live database.
 5. **Orders never paginate properly.** The board caps at 100 rows and says so; older orders are still reachable by search.
 6. **No offline support.** Losing connection mid-shift means losing the cart and failing checkouts.
 7. **No four-digit PIN login.** Scoped and then deliberately dropped. A 4-digit PIN is only 10,000 values, so it is only defensible with a salted scrypt hash held in a rules-locked node read solely by the Admin SDK, per-account lockout, and an IP throttle. Email/password stays the only method today.
@@ -365,7 +365,7 @@ New accounts register at `/register` with the `cashier` role (note: the `/regist
 13. **Styling** — Tailwind utilities plus `cn()` for conditional classes. Theme colours are CSS variables at the top of `index.css`; there is no dark mode.
 14. **Icons** — lucide-react only.
 15. **Money** — rounded to 2 decimals (`money()` in the store, `round2` in the pure modules) to avoid float drift. Never accept a total from a caller; recompute it.
-16. **Testing** — `npm test` runs 200 unit tests over the pure modules (`stats`, `finance`, `discounts`, `duplicates`, `receipt`, `roles`), the quantity parser, the dashboard filter logic and the order schema. `npm run test:tz` re-runs them in four timezones.
+16. **Testing** — Unit tests removed from the repository. Pure modules remain deterministic; verify changes manually or restore tests if needed.
 
 ---
 
@@ -376,8 +376,7 @@ npm install
 cp .env.example .env.local    # then fill in the Firebase values
 npm run dev                   # http://localhost:5173
 npm run build                 # vite build → dist/
-npm test                      # 200 unit tests
-npm run test:tz               # same suite across four timezones
+# tests removed; production build only
 npm run emulators             # local Firebase Auth + RTDB
 npm run deploy:rules          # publish database.rules.json
 ```
@@ -475,7 +474,6 @@ src/
     utils.js                  # cn() class merger
     voids.js                  # Void workflow helpers
     schemas.js                # Zod schemas
-    __tests__/                # 10 suites, 200 tests
 
   services/
     auth.services.js

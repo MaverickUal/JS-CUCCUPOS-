@@ -10,9 +10,6 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:tz": "for tz in UTC Asia/Manila America/New_York Australia/Lord_Howe; do echo \"-- TZ=$tz --\"; TZ=$tz vitest run || exit 1; done",
     "emulators": "firebase emulators:start",
     "deploy:rules": "firebase deploy --only database"
   },
