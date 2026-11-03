@@ -46,7 +46,10 @@ export const addMenuItem = async (itemData) => {
       )
     }
 
-    const newItemRef = push(menuRef, validation.data)
+    const payload = { ...validation.data }
+    if (payload.image === undefined) delete payload.image
+    if (payload.tag === undefined) delete payload.tag
+    const newItemRef = push(menuRef, payload)
     return ok("Menu item added successfully", { id: newItemRef.key, ...validation.data })
   } catch (error) {
     return failWith(error)
@@ -72,7 +75,10 @@ export const updateMenuItem = async (id, itemData) => {
       }
     }
 
-    await update(refAt(`menu/${id}`), itemData)
+    const payload = { ...itemData }
+    if (payload.image === undefined) delete payload.image
+    if (payload.tag === undefined) delete payload.tag
+    await update(refAt(`menu/${id}`), payload)
     return ok("Menu item updated successfully", { id, ...itemData })
   } catch (error) {
     return failWith(error)
