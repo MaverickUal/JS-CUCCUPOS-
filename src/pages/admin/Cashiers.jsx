@@ -109,13 +109,14 @@ export default function AdminCashiers() {
                   <TableCell className="text-right">{r.orders}</TableCell>
                   <TableCell className="text-muted-foreground">{r.last ? formatDate(r.last) : "No orders yet"}</TableCell>
                   <TableCell className="text-right">
-                    {r.email && !isOwner ? (
+                    {!isOwner && !isSelf ? (
                       <Switch
                         checked={!r.disabled}
                         disabled={isSelf}
                         onCheckedChange={async (on) => {
                           const res = await setCashierEnabled(r.id, on)
                           if (res && res.success === false) toast.error(res.message || "Could not update access.")
+                          else if (res && res.success) toast.success(res.message || "Access updated.")
                         }}
                         aria-label={`${r.disabled ? "Re-enable" : "Disable"} ${r.name}`}
                       />
