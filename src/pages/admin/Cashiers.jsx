@@ -113,7 +113,10 @@ export default function AdminCashiers() {
                       <Switch
                         checked={!r.disabled}
                         disabled={isSelf}
-                        onCheckedChange={(on) => setCashierEnabled(r.id, on)}
+                        onCheckedChange={async (on) => {
+                          const res = await setCashierEnabled(r.id, on)
+                          if (res && res.success === false) toast.error(res.message || "Could not update access.")
+                        }}
                         aria-label={`${r.disabled ? "Re-enable" : "Disable"} ${r.name}`}
                       />
                     ) : (
