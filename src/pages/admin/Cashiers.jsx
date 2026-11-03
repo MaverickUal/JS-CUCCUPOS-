@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Search } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +16,11 @@ import { roleLabel } from "@/lib/roles"
 export default function AdminCashiers() {
   const { users, orders, currentUser, setCashierEnabled } = useStore()
   const [search, setSearch] = useState("")
+  const [disabledOverrides, setDisabledOverrides] = useState({})
+
+  useEffect(() => {
+    setDisabledOverrides({})
+  }, [users])
 
   const rows = useMemo(() => {
     const map = new Map()
@@ -29,7 +34,7 @@ export default function AdminCashiers() {
         email: u.email,
         role: u.role,
         orders: 0,
-        disabled: u.disabled === true,
+        disabled: disabledOverrides[u.id] ?? (u.disabled === true),
       })
     )
     
@@ -49,7 +54,7 @@ export default function AdminCashiers() {
           roleLabel(a.role).localeCompare(roleLabel(b.role)) ||
           b.orders - a.orders
       )
-  }, [users, orders, search])
+  }, [users, orders, search, disabledOverrides])
 
   return (
     <div className="space-y-5 px-3 sm:px-0">
@@ -114,9 +119,18 @@ export default function AdminCashiers() {
                         checked={!r.disabled}
                         disabled={isSelf}
                         onCheckedChange={async (on) => {
+                          setDisabledOverrides((prev) => ({ ...prev, [r.id]: !on }))
                           const res = await setCashierEnabled(r.id, on)
-                          if (res && res.success === false) toast.error(res.message || "Could not update access.")
-                          else if (res && res.success) toast.success(res.message || "Access updated.")
+                          if (res && res.success === false) {
+                            setDisabledOverrides((prev) => {
+                              const next = { ...prev }
+                              delete next[r.id]
+                              return next
+                            })
+                            toast.error(res.message || "Could not update access.")
+                          } else if (res && res.success) {
+                            toast.success(res.message || "Access updated.")
+                          }
                         }}
                         aria-label={`${r.disabled ? "Re-enable" : "Disable"} ${r.name}`}
                       />
