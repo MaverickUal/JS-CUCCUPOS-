@@ -14624,7 +14624,6 @@ This file is the master documentation for CuccuPOS. It consolidates the design s
 
 ## Part 1 — Design system
 
-Built with the **ui-ux-pro-max** skill. All rules below come from its searchable database.
 
 ### Product type
 - **Primary**: POS / Retail / Service (coffee shop)
